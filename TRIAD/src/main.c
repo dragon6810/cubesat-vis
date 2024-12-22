@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <Geomag/Geomag.h>
 #include <arm_math.h>
 
 int main(int argc, char** argv)

@@ -1,6 +1,37 @@
-#if 0
+#if 1
 
 #include <Geomag/Geomag.h>
+#include <miscdefs.h>
+
+/*
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* INTERNAL DEFINES
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+#define WMM_FILENAME ("WMM.COF")
+
+#define ATanH(x)	    (0.5 * log((1 + x) / (1 - x)))
+
+/* UTC time at which 0deg N and 0deg E was along the X axis in equatorial coordinates.
+   This happens at the time of a vernal (spring) equinox.
+   (Actually this also happens every day whenever RA 0 crosses the meridian at 0deg N 0deg E,
+   but an equinox is a more convenient reference point.) */
+#define EQUINOX_TIME ((time_t) 1695451800)
+/* Radius of the spherical Earth in meters */
+#define EARTH_R ((float)6378100)
+
+/* Angular speed of Earth's rotation about its axis, in rad/s */
+#define EARTH_ROT_SPEED ((float)7.2921159E-5)
+
+#define errorcheck_ret(fresult) if (fresult != FR_OK) return fresult
+#define errorcheck_goto(fresult, lbl) if (fresult != FR_OK) goto lbl
+
+/*
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* INTERNAL ROUTINES DEFINITIONS
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
 
 static void Geomag_InitializeModel(Geomag_MagneticModel_t * MagneticModel) {
     MagneticModel->CoefficientFileEndDate = 0;
@@ -28,11 +59,9 @@ static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *Magne
 
     // Setup variable
     Geomag_InitializeModel(MagneticModel);
-    FIL MAG_COF_File;
     WMM_Line line;
     int index;
     float32_t epoch;
-    UINT bytes_read;
 
     epoch = 2020;
 
@@ -90,49 +119,6 @@ static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *Magne
     }
 
     return FR_OK;
-    /*
-    // Open file
-    FRESULT fres = f_open(&MAG_COF_File, filename, FA_READ | FA_OPEN_EXISTING); errorcheck_ret(fres);
-
-    // Model initial configuration (kept in from original implementation)
-    MagneticModel->Main_Field_Coeff_H[0] = 0.0;
-    MagneticModel->Main_Field_Coeff_G[0] = 0.0;
-    MagneticModel->Secular_Var_Coeff_H[0] = 0.0;
-    MagneticModel->Secular_Var_Coeff_G[0] = 0.0;
-
-    // Read epoch
-    //FRESULT epoch_read_res = f_read(&MAG_COF_File, &epoch, sizeof(float), &bytes_read);
-    //if (epoch_read_res != 0) { fres = f_error(&MAG_COF_File); errorcheck_goto(fres, cleanup); }
-    MagneticModel->epoch = epoch;
-
-    // Read lines
-    do
-    {
-        FRESULT line_read_res = f_read(&MAG_COF_File, &line, sizeof(WMM_Line), &bytes_read);
-        if (line_read_res != 0) { fres = f_error(&MAG_COF_File); errorcheck_goto(fres, cleanup); }
-
-        if(line.m <= line.n)
-        {
-            index = (line.n * (line.n + 1) / 2 + line.m);
-            MagneticModel->Main_Field_Coeff_G[index] = line.gnm;
-            MagneticModel->Secular_Var_Coeff_G[index] = line.dgnm;
-            MagneticModel->Main_Field_Coeff_H[index] = line.hnm;
-            MagneticModel->Secular_Var_Coeff_H[index] = line.dhnm;
-        }
-    } while(bytes_read == sizeof(WMM_Line));
-cleanup:;
-    FRESULT last_fres = f_close(&MAG_COF_File);
-    if (fres == FR_OK)
-    {
-        fres = last_fres; // Keep first encountered error
-
-        MagneticModel->nMax = MAX_N_MODE;
-        MagneticModel->nMaxSecVar = MAX_N_MODE;
-        MagneticModel->CoefficientFileEndDate = MagneticModel->epoch + 5;
-    }
-
-    return fres;
-    */
 }
 
 static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid) {
@@ -258,10 +244,10 @@ static float32_t Geomag_TimeToYear(time_t* t) {
     struct tm date;
 
     // Shared memory guard because gmtime is not thread-safe
-    SharedMem_BeginAccess();
+    //SharedMem_BeginAccess();
     struct tm *temp = gmtime(t);
     memcpy(&date, temp, sizeof(struct tm));
-    SharedMem_EndAccess();
+    //SharedMem_EndAccess();
 
     int year = date.tm_year + 1900;
 

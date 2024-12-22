@@ -18,7 +18,8 @@
 */
 
 //#include "MCU_Init.h"
-#include "User_types.h"
+#include <User_types.h>
+#include <ff.h>
 #include <arm_math.h>
 #include <time.h>
 
@@ -147,4 +148,5 @@ void testGeomag_X_HorizontalToEquatorial();
 void testGeomag_GetMagEquatorial();
 void testGeomag_LoadWMM();
 
+#endif
 #endif

@@ -12,6 +12,9 @@ extern "C"
 {
 #endif
 
+typedef float float32_t;
+typedef double float64_t;
+
 typedef enum
 {
     ARM_MATH_SUCCESS =                0,
