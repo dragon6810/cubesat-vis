@@ -12,7 +12,7 @@ BIN_FILE := $(BIN_DIR)/triad
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILE := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC_FILE))
 CC_FLAGS := $(CC_FLAGS) -I$(SRC_DIR) -I../common/inc/
-LD_FLAGS := $(LD_FLAGS) ../common/bin/common.a -lm
+LD_FLAGS := $(LD_FLAGS) ../common/bin/common.a -lm -lGL -lGLU -lGLEW -lglfw
 
 .PHONY: all mkdirs clean
 
