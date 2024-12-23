@@ -1,5 +1,9 @@
 #include <Geomag/Geomag.h>
+
 #include <miscdefs.h>
+#include <VecUtils.h>
+
+#include <stdio.h>
 
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -523,7 +527,7 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
     float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - (*t));
     // SatLocal is relative to vernal equinox prime meridian not just any prime meridian
-    Vec_RotateSpher(SatEquatorial, 0, rotAngle, 0x7fffffffd024);
+    Vec_RotateSpher(SatEquatorial, 0, rotAngle, &SatLocal);
     
     printf("expecting: %f.\n", rotAngle);
     printf("actual: %f.\n", SatLocal.X);

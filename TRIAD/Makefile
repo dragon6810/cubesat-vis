@@ -12,7 +12,18 @@ BIN_FILE := $(BIN_DIR)/triad
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILE := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC_FILE))
 CC_FLAGS := $(CC_FLAGS) -I$(SRC_DIR) -I../common/inc/
-LD_FLAGS := $(LD_FLAGS) ../common/bin/common.a -lm -lGL -lGLU -lGLEW -lglfw
+LD_FLAGS := $(LD_FLAGS)
+
+LIBS_LINUX := -lm -lGL -lGLU -lGLEW -lglfw
+LIBS_MACOS := -lm -framework OpenGL -lGLEW -lglfw
+LIBS := ../common/bin/common.a
+
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S), Linux)
+    LIBS += $(LIBS_LINUX)
+else ifeq ($(UNAME_S), Darwin)
+    LIBS += $(LIBS_MACOS)
+endif
 
 .PHONY: all mkdirs clean
 
@@ -23,7 +34,7 @@ mkdirs:
 	@mkdir -p $(OBJ_DIR)
 
 $(BIN_FILE): $(OBJ_FILE)
-	$(LD) -o $(BIN_FILE) $(OBJ_FILE) $(LD_FLAGS)
+	$(LD) -o $(BIN_FILE) $(OBJ_FILE) $(LD_FLAGS) $(LIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
