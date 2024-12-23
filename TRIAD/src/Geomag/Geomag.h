@@ -17,7 +17,6 @@
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-//#include "MCU_Init.h"
 #include <User_types.h>
 #include <ff.h>
 #include <arm_math.h>

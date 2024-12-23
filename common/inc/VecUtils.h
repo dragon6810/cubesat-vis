@@ -8,6 +8,7 @@ extern "C"
 {
 #endif
 
+// For some reason phi is horizontal
 void Vec_RotateSpher(Vec3D_t* V, float theta, float phi, Vec3D_t* result);
 
 #ifdef __cplusplus

@@ -1,5 +1,5 @@
 CC := gcc -c
-CC_FLAGS := -Wall -g -std=gnu11
+CC_FLAGS := -Wall -O0 -g -std=gnu11
 
 LD := gcc
 LD_FLAGS :=

@@ -1,5 +1,3 @@
-#if 1
-
 #include <Geomag/Geomag.h>
 #include <miscdefs.h>
 
@@ -519,15 +517,22 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     float32_t theta, phi, phi_p;
 
     // Angle between prime meridian and vernal equinox
+    // Distance we'd need to cover to align our prime meridian with vernal equinox./
+    // rotation = speed * time so
+    // rotAngle = EARTH_ROT_SPEED * EQUINOX_TIME - EARTH_ROT_SPEED * t so
+    // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
     float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - (*t));
-    // SatLocal is relative to prime meridian
-    Vec_RotateSpher(SatEquatorial, 0, rotAngle, &SatLocal);
+    // SatLocal is relative to vernal equinox prime meridian not just any prime meridian
+    Vec_RotateSpher(SatEquatorial, 0, rotAngle, 0x7fffffffd024);
+    
+    printf("expecting: %f.\n", rotAngle);
+    printf("actual: %f.\n", SatLocal.X);
 
     // Lattitude and Longitude angles for rotation at the end
     // theta is longitude, phi is latitude.
     arm_atan2_f32(sqrtf(powf(SatLocal.X, (float32_t)2) + powf(SatLocal.Y, (float32_t)2)), SatLocal.Z, &theta);
     arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
-    phi_p = phi - rotAngle; // 
+    phi_p = phi - rotAngle; 
 
     Geomag_MagneticModel_t MagneticModel;
     Geomag_MagneticModel_t TimedMagneticModel;
@@ -557,5 +562,3 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
 
     return FR_OK;
 }
-
-#endif

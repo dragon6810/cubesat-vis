@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <assert.h>
 
 #include <Geomag/Geomag.h>
 #include <window/window.h>
@@ -105,14 +106,17 @@ int VectorCmp(vec3_t a, vec3_t b)
 void drawcyl(vec3_t start, vec3_t end, vec3_t col)
 {
     const int segs = 8;
-    const float r = 16;
+    const float r = 128;
+    const float ambient = 0.5;
 
     int i, j;
 
     vec3_t dir, delta;
     vec3_t cur, p, vx, vy;
     vec3_t up, right;
+    vec3_t n;
     float theta;
+    float mul;
 
     VectorSubtract(delta, end, start);
     VectorNormalize(dir, delta);
@@ -136,6 +140,13 @@ void drawcyl(vec3_t start, vec3_t end, vec3_t col)
         VectorCopy(cur, start);
         for(j=2; j--; VectorAdd(cur, cur, delta))
         {
+            VectorScale(vx, right, cosf(theta));
+            VectorScale(vy, up, sinf(theta));
+            VectorAdd(n, vx, vy);
+            mul = n[2];
+            mul += ambient;
+            glColor3f(col[0] * mul, col[1] * mul, col[2] * mul);
+
             VectorScale(vx, right, cosf(theta) * r);
             VectorScale(vy, up, sinf(theta) * r);
             VectorCopy(p, cur);
@@ -151,8 +162,9 @@ void drawcyl(vec3_t start, vec3_t end, vec3_t col)
 void drawcone(vec3_t pos, vec3_t dir, vec3_t col)
 {
     const int segs = 8;
-    const float len = 96;
-    const float r = 48;
+    const float len = 512;
+    const float r = 256;
+    const float ambient = 0.5;
 
     int i;
 
@@ -160,6 +172,7 @@ void drawcone(vec3_t pos, vec3_t dir, vec3_t col)
     vec3_t vx, vy;
     vec3_t p, n;
     float theta;
+    float mul;
 
     VectorCopy(up, vec3_origin);
     if(dir[2] > 0.99)
@@ -178,6 +191,18 @@ void drawcone(vec3_t pos, vec3_t dir, vec3_t col)
     for(i=0; i<=segs; i++)
     {
         theta = (float) i / (float) segs * M_PI * 2;
+
+        VectorScale(vx, right, cosf(theta));
+        VectorScale(vy, up, sinf(theta));
+        VectorAdd(n, vx, vy);
+        VectorScale(dir, dir, 1/len);
+        VectorAdd(n, n, dir);
+        VectorScale(dir, dir, len);
+        VectorNormalize(n, n);
+
+        mul = n[2];
+        mul += ambient;
+        glColor3f(col[0] * mul, col[1] * mul, col[2] * mul);
 
         VectorScale(vx, right, cosf(theta) * r);
         VectorScale(vy, up, sinf(theta) * r);
@@ -249,6 +274,61 @@ void drawball(vec3_t pos, float r, vec3_t col)
     glPopMatrix();
 }
 
+void drawmagentry(vec3_t entry, vec3_t pos)
+{
+    vec3_t start, end;
+    vec3_t col;
+
+    VectorCopy(start, pos);
+    VectorAdd(end, entry, pos);
+
+    col[0] = 1;
+    col[1] = 0.5;
+    col[2] = 0;
+    drawarrow(start, end, col); 
+}
+
+// Generates and draws samples in fibonacci sphere around origin with distance d
+void drawmagfield(void)
+{
+    const int nsamples = 128;
+    const float phi = M_PI * (sqrtf(5) - 1);
+    const float d = 6371 + 500;
+
+    int i;
+
+    vec3_t in, out;
+    Vec3D_t vin;
+    Vec3D_t vout;
+    time_t t;
+    float theta;
+    float y, r;
+
+    time(&t);
+    for(i=0; i<nsamples; i++)
+    {
+        y = 1.0 - ((float) i / (float) (nsamples - 1)) * 2;
+        r = sqrtf(1.0 - y * y);
+
+        theta = (float) i * phi;
+
+        in[0] = d * cosf(theta);
+        in[1] = d * sinf(theta);
+        in[2] = d * y;
+
+        vin.X = in[0];
+        vin.Y = in[1];
+        vin.Z = in[2];
+
+        assert(Geomag_GetMagEquatorial(&t, &vin, &vout) == FR_OK);
+        out[0] = vout.X;
+        out[1] = vout.Y;
+        out[2] = vout.Z;
+
+        drawmagentry(out, in);
+    }
+}
+
 void render(void)
 {
     vec3_t col;
@@ -258,36 +338,24 @@ void render(void)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45, 16.0 / 9.0, 1, 10000);
+    gluPerspective(45, 16.0 / 9.0, 10, 100000);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     gluLookAt
     (
-        4096, 4096, 4096,
+        16384, 16384, 16384,
         0, 0, 0,
         0, 0, 1
     );
 
-    glColor3f(1, 1, 1);
-    glBegin(GL_QUADS);
-    glVertex3f(1024, 1024, 0);
-    glVertex3f(-1024, 1024, 0);
-    glVertex3f(-1024, -1024, 0);
-    glVertex3f(1024, -1024, 0);
-    glEnd();
+    col[0] = 0.5;
+    col[1] = 0.7;
+    col[2] = 1.0;
 
-    col[0] = 1;
-    col[1] = 0;
-    col[2] = 0;
+    drawball(vec3_origin, 6371, col);
 
-    drawball(vec3_origin, 1024, col);
-
-    end[0] = 0;
-    end[1] = 0;
-    end[2] = 2048;
-    col[1] = 1;
-    drawarrow(vec3_origin, end, col);
+    drawmagfield();    
 }
 
 int main(int argc, char** argv)
