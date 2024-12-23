@@ -25,11 +25,5 @@ void Vec_RotateSpher(Vec3D_t* V, float theta, float phi, Vec3D_t* result)
     res.Z = V->Z * cos_theta
 		- V->X * sin_theta;
 
-    res.X = phi;
-    res.Y = phi;
-    res.X = 123;
-
-    result->X = 543;
-
     memcpy(result != NULL ? result : V, &res, sizeof(Vec3D_t));
 }

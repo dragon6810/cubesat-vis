@@ -276,11 +276,15 @@ void drawball(vec3_t pos, float r, vec3_t col)
 
 void drawmagentry(vec3_t entry, vec3_t pos)
 {
+    const float vecscale = 256.0;
+
     vec3_t start, end;
+    vec3_t scaled;
     vec3_t col;
 
     VectorCopy(start, pos);
-    VectorAdd(end, entry, pos);
+    VectorScale(scaled, entry, vecscale);
+    VectorAdd(end, scaled, pos);
 
     col[0] = 1;
     col[1] = 0.5;
@@ -291,9 +295,9 @@ void drawmagentry(vec3_t entry, vec3_t pos)
 // Generates and draws samples in fibonacci sphere around origin with distance d
 void drawmagfield(void)
 {
-    const int nsamples = 128;
-    const float phi = M_PI * (sqrtf(5) - 1);
-    const float d = 6371 + 500;
+    const int nsamples = 256;
+    const float phi = M_PI * (float) (3.0 - sqrtf(5));
+    const float d = 6371 + 1024;
 
     int i;
 
@@ -312,8 +316,8 @@ void drawmagfield(void)
 
         theta = (float) i * phi;
 
-        in[0] = d * cosf(theta);
-        in[1] = d * sinf(theta);
+        in[0] = d * r * cosf(theta);
+        in[1] = d * r * sinf(theta);
         in[2] = d * y;
 
         vin.X = in[0];

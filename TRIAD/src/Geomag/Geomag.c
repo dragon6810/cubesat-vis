@@ -526,16 +526,14 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     // rotAngle = EARTH_ROT_SPEED * EQUINOX_TIME - EARTH_ROT_SPEED * t so
     // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
     float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - (*t));
-    // SatLocal is relative to vernal equinox prime meridian not just any prime meridian
+    // SatLocal is relative to vernal equinox
     Vec_RotateSpher(SatEquatorial, 0, rotAngle, &SatLocal);
     
-    printf("expecting: %f.\n", rotAngle);
-    printf("actual: %f.\n", SatLocal.X);
-
     // Lattitude and Longitude angles for rotation at the end
     // theta is longitude, phi is latitude.
-    arm_atan2_f32(sqrtf(powf(SatLocal.X, (float32_t)2) + powf(SatLocal.Y, (float32_t)2)), SatLocal.Z, &theta);
+    arm_atan2_f32(sqrtf(SatLocal.X*SatLocal.X + SatLocal.Y*SatLocal.Y), SatLocal.Z, &theta);
     arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
+    // phi relative to prime meridian as opposed to vernal equinox
     phi_p = phi - rotAngle; 
 
     Geomag_MagneticModel_t MagneticModel;
@@ -562,7 +560,7 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     Geomag_TimelyModifyMagModel(t, &MagneticModel, &TimedMagneticModel);
     Geomag_Compute(&Ellip, &CoordSpherical, &CoordGeodetic, &TimedMagneticModel, &GeomagElements);
 
-    Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi_p);
+    Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
 
     return FR_OK;
 }
