@@ -1,5 +1,7 @@
 #include <window/window.h>
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 
 GLFWwindow* makewindow(void)
@@ -17,6 +19,8 @@ GLFWwindow* makewindow(void)
         printf("failed to init glew: \"%s\".\n", glewGetErrorString(err));
         abort();
     }
+
+    glViewport(0, 0, 1280, 720);
 
     return win;
 }

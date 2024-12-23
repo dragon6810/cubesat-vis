@@ -121,12 +121,18 @@ static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *Magne
     return FR_OK;
 }
 
+// sets up ellipsoid and geoid to earth's values
 static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid) {
     Ellip->a = 6378.137; /*semi-major axis of the ellipsoid in */
     Ellip->b = 6356.7523142; /*semi-minor axis of the ellipsoid in */
+    
+    // flattening is (a - b) / a
     Ellip->fla = 1 / 298.257223563; /* flattening */
+    
     arm_sqrt_f32(1 - (Ellip->b * Ellip->b) / (Ellip->a * Ellip->a), &(Ellip->eps)); /*first eccentricity */
     Ellip->epssq = (Ellip->eps * Ellip->eps); /*first eccentricity squared */
+   
+    // mean radius
     Ellip->re = 6371.2; /* Earth's radius */
 
     /* Sets EGM-96 model file parameters */
@@ -139,24 +145,27 @@ static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid)
     Geoid->UseGeoid = MAG_USE_GEOID;
 }
 
-static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, Geomag_CoordGeodetic_t* CoordGeodetic) {
-
-    float32_t modified_b,r,e,f,p,q,d,v,g,t,zlong,rlat;
+static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, Geomag_CoordGeodetic_t* CoordGeodetic)
+{
+    float32_t b,r,e,f,p,q,d,v,g,t,zlong,rlat;
 
     /*
     *   1.0 compute semi-minor axis and set sign to that of z in order
     *       to get sign of Phi correct
     */
 
-    if (z < 0.0) modified_b = -Ellip->b;
-    else  modified_b = Ellip->b;
+    if (z < 0.0)
+        b = -Ellip->b;
+    else
+        b = Ellip->b;
 
     /*
     *   2.0 compute intermediate values for latitude
     */
     arm_sqrt_f32(x*x + y*y, &r);
-    e= ( modified_b*z - (Ellip->a*Ellip->a - modified_b*modified_b) ) / ( Ellip->a*r );
-    f= ( modified_b*z + (Ellip->a*Ellip->a - modified_b*modified_b) ) / ( Ellip->a*r );
+    e = ( b*z - (Ellip->a*Ellip->a - b*b) ) / ( Ellip->a*r );
+    f = ( b*z + (Ellip->a*Ellip->a - b*b) ) / ( Ellip->a*r );
+    
     /*
     *   3.0 find solution to:
     *       t^4 + 2*E*t^3 + 2*F*t - 1 = 0
@@ -166,11 +175,10 @@ static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, f
     d= p*p*p + q*q;
 
     if( d >= 0.0 )
-        {
+    {
         arm_sqrt_f32(d, &d);
-        v= pow( (d - q), (1.0 / 3.0) )
-            - pow( (d+ q), (1.0 / 3.0) );
-        }
+        v= pow( (d - q), (1.0 / 3.0) ) - pow( (d+ q), (1.0 / 3.0) );
+    }
     else
         {
         float32_t sqrt_p;
@@ -190,13 +198,13 @@ static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, f
     arm_sqrt_f32(g*g  + (f - v*g)/(2.0*g - e), &t);
     t = t - g;
 
-    arm_atan2_f32((Ellip->a * (1.0 - t * t)), (2.0 * modified_b * t), &rlat); // ORIGINAL: rlat =atan( (Ellip->a*(1.0 - t*t)) / (2.0*modified_b*t) );
+    arm_atan2_f32((Ellip->a * (1.0 - t * t)), (2.0 * b * t), &rlat); // ORIGINAL: rlat =atan( (Ellip->a*(1.0 - t*t)) / (2.0*b*t) );
     CoordGeodetic->phi = RAD2DEG(rlat);
 
     /*
     *   5.0 compute height above ellipsoid
     */
-    CoordGeodetic->HeightAboveEllipsoid = (r - Ellip->a*t) * arm_cos_f32(rlat) + (z - modified_b) * arm_sin_f32(rlat);
+    CoordGeodetic->HeightAboveEllipsoid = (r - Ellip->a*t) * arm_cos_f32(rlat) + (z - b) * arm_sin_f32(rlat);
 
     /*
     *   6.0 compute longitude east of Greenwich
@@ -490,8 +498,10 @@ static void Geomag_Compute(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* C
 }
 
 static void Geomag_HorizontalToEquatorial(Geomag_GeoMagneticElements_t* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p) {
-    float32_t theta_p = - theta - PI/2;
-    //TODO: Check math. Should we indeed sum with Vernal Equinox as we discussed?
+    float32_t theta_p = -(theta + PI/2);
+    // TODO: Check math. Should we indeed sum with Vernal Equinox as we discussed?
+    //                   ^
+    //                   | I dunno man
 
     Vec_RotateSpher((Vec3D_t*)&(MagHorizontal->Bx), theta_p, phi_p, MagEquatorial);
 }
@@ -502,33 +512,44 @@ static void Geomag_HorizontalToEquatorial(Geomag_GeoMagneticElements_t* MagHoriz
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t* MagEquatorial) {
+FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t* MagEquatorial)
+{
     Vec3D_t SatLocal;
-    //Angle between prime meridian and vernal equinox
-    float32_t rotAngle = EARTH_ROT_SPEED * (- *t + EQUINOX_TIME);
-    Vec_RotateSpher((Vec3D_t*)SatEquatorial, 0, rotAngle, &SatLocal);
+
+    float32_t theta, phi, phi_p;
+
+    // Angle between prime meridian and vernal equinox
+    float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - (*t));
+    // SatLocal is relative to prime meridian
+    Vec_RotateSpher(SatEquatorial, 0, rotAngle, &SatLocal);
 
     // Lattitude and Longitude angles for rotation at the end
-    float32_t theta;
+    // theta is longitude, phi is latitude.
     arm_atan2_f32(sqrtf(powf(SatLocal.X, (float32_t)2) + powf(SatLocal.Y, (float32_t)2)), SatLocal.Z, &theta);
-    float32_t phi;
     arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
-    float32_t phi_p = phi - rotAngle;
+    phi_p = phi - rotAngle; // 
 
-    Geomag_MagneticModel_t MagneticModel, TimedMagneticModel;
+    Geomag_MagneticModel_t MagneticModel;
+    Geomag_MagneticModel_t TimedMagneticModel;
+    
     Geomag_Ellipsoid_t Ellip;
     Geomag_Geoid_t Geoid;
+    
     Geomag_CoordGeodetic_t CoordGeodetic;
     Geomag_CoordSpherical_t CoordSpherical;
     Geomag_GeoMagneticElements_t GeomagElements;
 
-    FRESULT fres = Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel); errorcheck_ret(fres);
+    // Reads from hard-coded database, for now
+    FRESULT fres = Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
+    errorcheck_ret(fres);
     Geomag_InitializeModel(&TimedMagneticModel);
+    
     Geomag_SetDefaults(&Ellip, &Geoid);
     Geoid.Geoid_Initialized = pdTRUE;
 
     Geomag_CartesianToGeodetic(&Ellip, SatLocal.X, SatLocal.Y, SatLocal.Z, &CoordGeodetic);
     Geomag_GeodeticToSpherical(&Ellip, &CoordGeodetic, &CoordSpherical);
+    
     Geomag_TimelyModifyMagModel(t, &MagneticModel, &TimedMagneticModel);
     Geomag_Compute(&Ellip, &CoordSpherical, &CoordGeodetic, &TimedMagneticModel, &GeomagElements);
 
