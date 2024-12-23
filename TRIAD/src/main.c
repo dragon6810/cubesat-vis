@@ -276,7 +276,7 @@ void drawball(vec3_t pos, float r, vec3_t col)
 
 void drawmagentry(vec3_t entry, vec3_t pos)
 {
-    const float vecscale = 256.0;
+    const float vecscale = 4.0;
 
     vec3_t start, end;
     vec3_t scaled;

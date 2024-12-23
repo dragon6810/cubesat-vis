@@ -4,6 +4,8 @@
 #include <VecUtils.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
 
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -52,73 +54,50 @@ static void Geomag_InitializeModel(Geomag_MagneticModel_t * MagneticModel) {
     }
 }
 
-static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *MagneticModel) {
+static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *MagneticModel)
+{
     // Type to read each line into
     typedef struct {
         int n, m;
         float32_t gnm, hnm, dgnm, dhnm;
     } WMM_Line;
 
+    FILE *ptr;
+
     // Setup variable
     Geomag_InitializeModel(MagneticModel);
     WMM_Line line;
     int index;
-    float32_t epoch;
+    int count;
+    int bogus;
 
-    epoch = 2020;
+    ptr = fopen(WMM_FILENAME, "r");
+    if(!ptr)
+    {
+        printf("can't open file \"%s\".\n", WMM_FILENAME);
+        return FR_NO_FILE;
+    }
 
-    // Model initial configuration (kept in from original implementation)
+    fscanf(ptr, " %f WMM-%d %d/%d/%d\n", &MagneticModel->epoch, &bogus, &bogus, &bogus, &bogus);
+
     MagneticModel->Main_Field_Coeff_H[0] = 0.0;
     MagneticModel->Main_Field_Coeff_G[0] = 0.0;
     MagneticModel->Secular_Var_Coeff_H[0] = 0.0;
     MagneticModel->Secular_Var_Coeff_G[0] = 0.0;
 
-    float gnm[] = {
-        -29404.500000, -1450.699951, -2500.000000, 2982.000000, 1676.800049, 1363.900024, -2381.000000, 1236.199951, 525.700012,
-        903.099976, 809.400024, 86.199997, -309.399994, 47.900002, -234.399994, 363.100006, 187.800003, -140.699997, -151.199997,
-        13.700000, 65.900002, 65.599998, 73.000000, -121.500000, -36.200001, 13.500000, -64.699997, 80.599998, -76.800003, -8.300000,
-        56.500000, 15.800000, 6.400000, -7.200000, 9.800000, 23.600000, 9.800000, -17.500000, -0.400000, -21.100000, 15.300000,
-        13.700000, -16.500000, -0.300000, 5.000000, 8.200000, 2.900000, -1.400000, -1.100000, -13.300000, 1.100000, 8.900000,
-        -9.300000, -11.900000, -1.900000, -6.200000, -0.100000, 1.700000, -0.900000, 0.600000, -0.900000, 1.900000, 1.400000, -2.400000,
-        -3.900000, 3.000000, -1.400000, -2.500000, 2.400000, -0.900000, 0.300000, -0.700000, -0.100000, 1.400000, -0.600000, 0.200000,
-        3.100000, -2.000000, -0.100000, 0.500000, 1.300000, -1.200000, 0.700000, 0.300000, 0.500000, -0.200000, -0.500000, 0.100000,
-        -1.100000, -0.300000
-    };
-    float hnm[] = {
-        0.000000, 4652.899902, 0.000000, -2991.600098, -734.799988, 0.000000, -82.199997, 241.800003, -542.900024, 0.000000, 282.000000,
-        -158.399994, 199.800003, -350.100006, 0.000000, 47.700001, 208.399994, -121.300003, 32.200001, 99.099998, 0.000000, -19.100000,
-        25.000000, 52.700001, -64.400002, 9.000000, 68.099998, 0.000000, -51.400002, -16.799999, 2.300000, 23.500000, -2.200000, -27.200001,
-        -1.900000, 0.000000, 8.400000, -15.300000, 12.800000, -11.800000, 14.900000, 3.600000, -6.900000, 2.800000, 0.000000, -23.299999,
-        11.100000, 9.800000, -5.100000, -6.200000, 7.800000, 0.400000, -1.500000, 9.700000, 0.000000, 3.400000, -0.200000, 3.500000, 4.800000,
-        -8.600000, -0.100000, -4.200000, -3.400000, -0.100000, -8.800000, 0.000000, -0.000000, 2.600000, -0.500000, -0.400000, 0.600000,
-        -0.200000, -1.700000, -1.600000, -3.000000, -2.000000, -2.600000, 0.000000, -1.200000, 0.500000, 1.300000, -1.800000, 0.100000, 0.700000,
-        -0.100000, 0.600000, 0.200000, -0.900000, -0.000000, 0.500000
-    };
-    float dgnm[] = {
-        6.700000, 7.700000, -11.500000, -7.100000, -2.200000, 2.800000, -6.200000, 3.400000, -12.200000, -1.100000, -1.600000, -6.000000, 5.400000,
-        -5.500000, -0.300000, 0.600000, -0.700000, 0.100000, 1.200000, 1.000000, -0.600000, -0.400000, 0.500000, 1.400000, -1.400000, -0.000000,
-        0.800000, -0.100000, -0.300000, -0.100000, 0.700000, 0.200000, -0.500000, -0.800000, 1.000000, -0.100000, 0.100000, -0.100000, 0.500000,
-        -0.100000, 0.400000, 0.500000, 0.000000, 0.400000, -0.100000, -0.200000, -0.000000, 0.400000, -0.300000, -0.000000, 0.300000, -0.000000,
-        -0.000000, -0.400000, 0.000000, -0.000000, -0.000000, 0.200000, -0.100000, -0.200000, -0.000000, -0.100000, -0.200000, -0.100000, -0.000000,
-        -0.000000, -0.100000, -0.000000, 0.000000, -0.000000, -0.100000, 0.000000, -0.000000, -0.100000, -0.100000, -0.100000, -0.100000, 0.000000,
-        -0.000000, -0.000000, 0.000000, -0.000000, -0.000000, 0.000000, -0.000000, 0.000000, -0.000000, -0.000000, -0.000000, -0.100000
-    };
-    float dhnm[] = {
-        0.000000, -25.100000, 0.000000, -30.200001, -23.900000, 0.000000, 5.700000, -1.000000, 1.100000, 0.000000, 0.200000, 6.900000, 3.700000,
-        -5.600000, 0.000000, 0.100000, 2.500000, -0.900000, 3.000000, 0.500000, 0.000000, 0.100000, -1.800000, -1.400000, 0.900000, 0.100000, 1.000000,
-        0.000000, 0.500000, 0.600000, -0.700000, -0.200000, -1.200000, 0.200000, 0.300000, 0.000000, -0.300000, 0.700000, -0.200000, 0.500000, -0.300000,
-        -0.500000, 0.400000, 0.100000, 0.000000, -0.300000, 0.200000, -0.400000, 0.400000, 0.100000, -0.000000, -0.200000, 0.500000, 0.200000, 0.000000,
-        -0.000000, 0.100000, -0.300000, 0.100000, -0.200000, 0.100000, -0.000000, -0.100000, 0.200000, -0.000000, 0.000000, -0.000000, 0.100000, 0.000000,
-        0.200000, -0.000000, 0.000000, 0.100000, -0.000000, -0.100000, 0.000000, -0.000000, 0.000000, -0.000000, 0.000000, -0.100000, 0.100000, -0.000000,
-        0.000000, -0.000000, 0.100000, -0.000000, -0.000000, 0.000000, -0.100000
-    };
+    count = 0;
+    while(fscanf(ptr, " %d %d %f %f %f %f", &line.n, &line.m, &line.gnm, &line.hnm, &line.dgnm, &line.dhnm) == 6)
+    {
+        count++;
+        assert(count < CALCULATE_NUMTERMS(MAX_N_MODE)+1);
 
-    for (int i = 0; i < 90; i++) {
-        MagneticModel->Main_Field_Coeff_G[i+1] = gnm[i];
-        MagneticModel->Secular_Var_Coeff_G[i+1] = dgnm[i];
-        MagneticModel->Main_Field_Coeff_H[i+1] = hnm[i];
-        MagneticModel->Secular_Var_Coeff_H[i+1] = dhnm[i];
+        MagneticModel->Main_Field_Coeff_G[count] = line.gnm;
+        MagneticModel->Main_Field_Coeff_H[count] = line.hnm;
+        MagneticModel->Secular_Var_Coeff_G[count] = line.dgnm;
+        MagneticModel->Secular_Var_Coeff_H[count] = line.dhnm;
     }
+
+    fclose(ptr);
 
     return FR_OK;
 }
@@ -518,7 +497,7 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
 {
     Vec3D_t SatLocal;
 
-    float32_t theta, phi, phi_p;
+    float32_t theta, phi, phi;
 
     // Angle between prime meridian and vernal equinox
     // Distance we'd need to cover to align our prime meridian with vernal equinox./
@@ -533,8 +512,6 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     // theta is longitude, phi is latitude.
     arm_atan2_f32(sqrtf(SatLocal.X*SatLocal.X + SatLocal.Y*SatLocal.Y), SatLocal.Z, &theta);
     arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
-    // phi relative to prime meridian as opposed to vernal equinox
-    phi_p = phi - rotAngle; 
 
     Geomag_MagneticModel_t MagneticModel;
     Geomag_MagneticModel_t TimedMagneticModel;
@@ -547,9 +524,9 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     Geomag_GeoMagneticElements_t GeomagElements;
 
     // Reads from hard-coded database, for now
-    FRESULT fres = Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
-    errorcheck_ret(fres);
+    FRESULT fres = Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel); errorcheck_ret(fres);
     Geomag_InitializeModel(&TimedMagneticModel);
+    Geomag_TimelyModifyMagModel(t, &MagneticModel, &TimedMagneticModel);
     
     Geomag_SetDefaults(&Ellip, &Geoid);
     Geoid.Geoid_Initialized = pdTRUE;
@@ -557,7 +534,6 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     Geomag_CartesianToGeodetic(&Ellip, SatLocal.X, SatLocal.Y, SatLocal.Z, &CoordGeodetic);
     Geomag_GeodeticToSpherical(&Ellip, &CoordGeodetic, &CoordSpherical);
     
-    Geomag_TimelyModifyMagModel(t, &MagneticModel, &TimedMagneticModel);
     Geomag_Compute(&Ellip, &CoordSpherical, &CoordGeodetic, &TimedMagneticModel, &GeomagElements);
 
     Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
