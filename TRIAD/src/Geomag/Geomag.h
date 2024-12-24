@@ -105,6 +105,7 @@ typedef struct {
     float32_t Bx; /*5. Northern component of the magnetic field vector*/
     float32_t By; /*6. Eastern component of the magnetic field vector*/
     float32_t Bz; /*7. Downward component of the magnetic field vector*/
+    Vec3D_t g;    /*8. Cartesian gradient*/
 } Geomag_GeoMagneticElements_t;
 
 typedef struct {
@@ -135,6 +136,7 @@ typedef struct {
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t* MagEquatorial);
+void Geomag_RunTests(const char *filename);
 
 #ifdef DEBUG_ENABLED
 /*

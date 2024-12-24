@@ -99,6 +99,9 @@ static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *Magne
 
     fclose(ptr);
 
+    MagneticModel->nMax = MAX_N_MODE;
+    MagneticModel->nMaxSecVar = MAX_N_MODE;
+
     return FR_OK;
 }
 
@@ -124,6 +127,13 @@ static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid)
     Geoid->NumbGeoidElevs = Geoid->NumbGeoidCols * Geoid->NumbGeoidRows;
     Geoid->Geoid_Initialized = 0; /*  Geoid will be initialized only if this is set to zero */
     Geoid->UseGeoid = MAG_USE_GEOID;
+}
+
+static void Geomag_SphericalToCartesian(Geomag_CoordSpherical_t* Sphe, Vec3D_t* Cart)
+{
+    Cart->X = Sphe->r * cosf(Sphe->lambda) * cosf(Sphe->phig);
+    Cart->Y = Sphe->r * sinf(Sphe->lambda) * cosf(Sphe->phig);
+    Cart->Z = Sphe->r * sinf(Sphe->phig  );
 }
 
 static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, Geomag_CoordGeodetic_t* CoordGeodetic)
@@ -233,10 +243,10 @@ static float32_t Geomag_TimeToYear(time_t* t) {
     struct tm date;
 
     // Shared memory guard because gmtime is not thread-safe
-    //SharedMem_BeginAccess();
+    // SharedMem_BeginAccess();
     struct tm *temp = gmtime(t);
     memcpy(&date, temp, sizeof(struct tm));
-    //SharedMem_EndAccess();
+    // SharedMem_EndAccess();
 
     int year = date.tm_year + 1900;
 
@@ -256,6 +266,7 @@ static void Geomag_TimelyModifyMagModel(time_t* t, Geomag_MagneticModel_t *Magne
     a = TimedMagneticModel->nMaxSecVar;
     b = (a * (a + 1) / 2 + a);
     strcpy(TimedMagneticModel->ModelName, MagneticModel->ModelName);
+
     for(n = 1; n <= MagneticModel->nMax; n++)
     {
         for(m = 0; m <= n; m++)
@@ -466,7 +477,81 @@ static void Geomag_CalculateGeomagneticElements(Geomag_GeoMagneticElements_t *Ma
     GeoMagneticElements->Incl = RAD2DEG(GeoMagneticElements->Incl);
 }
 
-static void Geomag_Compute(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* CoordSpherical, Geomag_CoordGeodetic_t* CoordGeodetic, Geomag_MagneticModel_t* TimedMagneticModel, Geomag_GeoMagneticElements_t *GeomagElements) {
+float Geomag_SlowFactorial(int n)
+{
+    int i;
+
+    float res;
+
+    res = 1;
+    for (i=2; i<=n; i++)
+        res *= i;
+    
+    return res;
+}
+
+float Geomag_CalcLegendere(int n, int m, float x)
+{
+    int i;
+
+    float pnm1, pnm2, pn;
+
+    if(m < 0 || m > n)
+        return 0;
+
+    if (n == 0 && m == 0)
+        return 1.0; // P_0^0(x) = 1
+    if (n == 1 && m == 0)
+        return x;   // P_1^0(x) = x
+    if (m == n)
+        return powf(-1, m) * Geomag_SlowFactorial(2*m - 1) * powf(1 - x*x, m / 2.0); // Special case
+
+    pnm1 =  x;
+    pnm2 = 1;
+    pn = 0;
+
+    for(i=2; i<=n; i++)
+    {
+        pn = ((2*i - 1)*x*pnm1 - (i - 1)*pnm2) / (float) i;
+        pnm2 = pnm1;
+        pnm1 = pn;
+    }
+
+    if (m > 0)
+        pn = powf(-1, m) * (1 - x*x) * pn;
+
+    return pn;
+}
+
+float Geomag_ComputePotentialAtPoint(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* CoordSpherical, Geomag_MagneticModel_t* TimedMagneticModel)
+{
+    int i, n, m;
+
+    float res;
+
+    float altterm, fieldterm, legendreterm;
+
+    res = 0;
+    for(i=1, n=1; i<=TimedMagneticModel->nMax; n++)
+    {
+        for(m=0; m<=n; m++, i++)
+        {
+            altterm = powf(Ellip->re / CoordSpherical->r, n+1);
+            fieldterm = 0;
+            fieldterm += TimedMagneticModel->Main_Field_Coeff_G[i] * cosf(CoordSpherical->lambda * m);
+            fieldterm += TimedMagneticModel->Main_Field_Coeff_H[i] * sinf(CoordSpherical->lambda * m);
+            legendreterm = Geomag_CalcLegendere(n, m, cosf(-CoordSpherical->phig + M_PI_2));
+            res += altterm * fieldterm * legendreterm;
+            //printf("i=%d, n=%d, m=%d, g=%f, h=%f\n", i, n, m, TimedMagneticModel->Main_Field_Coeff_G[i], TimedMagneticModel->Main_Field_Coeff_H[i]);
+        }
+    }
+
+    return res * Ellip->re;
+}
+
+static void Geomag_Compute(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* CoordSpherical, Geomag_CoordGeodetic_t* CoordGeodetic, Geomag_MagneticModel_t* TimedMagneticModel, Geomag_GeoMagneticElements_t *GeomagElements)
+{   
+#if 0
     Geomag_LegendreFunction_t LegendreFunction;
     Geomag_SphericalHarmonicVariables_t SphVariables;
     Geomag_GeoMagneticElements_t MagneticResultsSph, MagneticResultsGeo;
@@ -476,6 +561,40 @@ static void Geomag_Compute(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* C
     Geomag_Summation(&LegendreFunction, TimedMagneticModel, &SphVariables, CoordSpherical, &MagneticResultsSph); /* Accumulate the spherical harmonic coefficients*/
     Geomag_RotateMagneticVector(CoordSpherical, CoordGeodetic, &MagneticResultsSph, &MagneticResultsGeo); /* Map the computed Magnetic fields to Geodeitic coordinates  */
     Geomag_CalculateGeomagneticElements(&MagneticResultsGeo, GeomagElements); /* Calculate the Geomagnetic elements, Equation 19 , WMM Technical report */
+#else
+    const float epsilon = 0.01;
+
+    float p, px, py, pz, dx, dy, dz;
+
+    p = Geomag_ComputePotentialAtPoint(Ellip, CoordSpherical, TimedMagneticModel);
+    
+    CoordSpherical->lambda += epsilon;
+    px = Geomag_ComputePotentialAtPoint(Ellip, CoordSpherical, TimedMagneticModel) - p;
+    CoordSpherical->lambda -= epsilon;
+
+    CoordSpherical->phig += epsilon;
+    py = Geomag_ComputePotentialAtPoint(Ellip, CoordSpherical, TimedMagneticModel) - p;
+    CoordSpherical->phig -= epsilon;
+
+    CoordSpherical->r += epsilon;
+    pz = Geomag_ComputePotentialAtPoint(Ellip, CoordSpherical, TimedMagneticModel) - p;
+    CoordSpherical->r -= epsilon;
+
+    dx = px / epsilon;
+    dy = py / epsilon;
+    dz = pz / epsilon;
+
+    //printf("p: %f, %f, %f.\n", px, py, pz);
+    //printf("d: %f, %f, %f.\n", dx, dy, dz);
+
+    GeomagElements->Bx = dx;
+    GeomagElements->By = dy;
+    GeomagElements->Bz = dz;
+
+    GeomagElements->F = p;
+
+    Geomag_SphericalToCartesian(&GeomagElements->Bx, &GeomagElements->g);
+#endif
 }
 
 static void Geomag_HorizontalToEquatorial(Geomag_GeoMagneticElements_t* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p) {
@@ -485,6 +604,64 @@ static void Geomag_HorizontalToEquatorial(Geomag_GeoMagneticElements_t* MagHoriz
     //                   | I dunno man
 
     Vec_RotateSpher((Vec3D_t*)&(MagHorizontal->Bx), theta_p, phi_p, MagEquatorial);
+}
+
+void Geomag_RunTests(const char *filename)
+{
+    int i;
+
+    FILE *ptr;
+    float year, altitude, latitude, longitude, testp;
+    time_t time;
+    float p;
+    float delta;
+
+    ptr = fopen(filename, "r");
+    if (!ptr)
+    {
+        printf("couldn't open test file \"%s\".\n", filename);
+        abort();
+    }
+
+    // skip the spec at the top by skipping 18 lines
+    char buffer[256];
+    for (i=0; i<18; ++i)
+        fgets(buffer, sizeof(buffer), ptr);
+
+    Geomag_MagneticModel_t MagneticModel, TimedMagneticModel;
+    Geomag_Ellipsoid_t Ellip;
+    Geomag_CoordSpherical_t CoordSpherical;
+    Geomag_Geoid_t Geoid;
+
+    Geomag_InitializeModel(&MagneticModel);
+    Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
+    Geomag_InitializeModel(&TimedMagneticModel);
+    Geomag_SetDefaults(&Ellip, &Geoid);
+
+    i = 0;
+    while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %*f %*f %*f %f %*f %*f %*f %*f %*f %*f %*f\n", 
+                  &year, &altitude, &latitude, &longitude, &testp) == 5) 
+    {
+        CoordSpherical.r = Ellip.re + altitude;
+        CoordSpherical.phig = DEG2RAD(latitude);
+        CoordSpherical.lambda = DEG2RAD(longitude);
+
+        time = (time_t)((year - 1970) * 365.25 * 24 * 3600);
+        Geomag_TimelyModifyMagModel(&time, &MagneticModel, &TimedMagneticModel);
+
+        p = Geomag_ComputePotentialAtPoint(&Ellip, &CoordSpherical, &TimedMagneticModel);
+
+        printf("test %d:\n", i++);
+        printf("  Input: Year=%.2f, Altitude=%.2f km, Latitude=%.2f deg, Longitude=%.2f deg\n",
+               year, altitude, latitude, longitude);
+        printf("  Expected Potential: %.6f\n", testp);
+        printf("  Computed Potential: %.6f\n", p);
+
+        delta = fabs(p - testp);
+        printf("  Difference: %.6f\n\n", delta);
+    }
+
+    fclose(ptr);
 }
 
 /*
@@ -497,15 +674,15 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
 {
     Vec3D_t SatLocal;
 
-    float32_t theta, phi, phi;
+    float32_t theta, phi;
 
     // Angle between prime meridian and vernal equinox
-    // Distance we'd need to cover to align our prime meridian with vernal equinox./
+    // Distance we'd need to cover to align our prime meridian with vernal equinox.
     // rotation = speed * time so
     // rotAngle = EARTH_ROT_SPEED * EQUINOX_TIME - EARTH_ROT_SPEED * t so
     // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
     float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - (*t));
-    // SatLocal is relative to vernal equinox
+    // SatLocal is relative to prime meridian
     Vec_RotateSpher(SatEquatorial, 0, rotAngle, &SatLocal);
     
     // Lattitude and Longitude angles for rotation at the end
@@ -536,7 +713,10 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     
     Geomag_Compute(&Ellip, &CoordSpherical, &CoordGeodetic, &TimedMagneticModel, &GeomagElements);
 
-    Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
+    *MagEquatorial = GeomagElements.g;
+    MagEquatorial->X = MagEquatorial->Y = 0;
+    MagEquatorial->Z = GeomagElements.F;
+    //Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
 
     return FR_OK;
 }

@@ -276,19 +276,23 @@ void drawball(vec3_t pos, float r, vec3_t col)
 
 void drawmagentry(vec3_t entry, vec3_t pos)
 {
-    const float vecscale = 4.0;
+    const float vecscale = 40;
 
     vec3_t start, end;
     vec3_t scaled;
     vec3_t col;
 
+    col[0] = 1;
+    col[1] = 0.5;
+    col[2] = 0;
+    drawball(pos, logf(VectorLength(entry)) * vecscale, col);
+
+    return;
+
     VectorCopy(start, pos);
     VectorScale(scaled, entry, vecscale);
     VectorAdd(end, scaled, pos);
 
-    col[0] = 1;
-    col[1] = 0.5;
-    col[2] = 0;
     drawarrow(start, end, col); 
 }
 
@@ -359,12 +363,14 @@ void render(void)
 
     drawball(vec3_origin, 6371, col);
 
-    drawmagfield();    
+    //drawmagfield();    
 }
 
 int main(int argc, char** argv)
 {
     GLFWwindow *win;
+
+    Geomag_RunTests("WMM2025_TestValues.txt");
 
     windowinginit();
     win = makewindow();
