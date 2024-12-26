@@ -492,35 +492,13 @@ float Geomag_SlowFactorial(int n)
 
 float Geomag_CalcLegendere(int n, int m, float x)
 {
-    int i;
+    float coef;
 
-    float pnm1, pnm2, pn;
+    coef = 1;
+    if(m > 0)
+        coef = sqrtf(2 * Geomag_SlowFactorial(n - m) / Geomag_SlowFactorial(n + m));
+    
 
-    if(m < 0 || m > n)
-        return 0;
-
-    if (n == 0 && m == 0)
-        return 1.0; // P_0^0(x) = 1
-    if (n == 1 && m == 0)
-        return x;   // P_1^0(x) = x
-    if (m == n)
-        return powf(-1, m) * Geomag_SlowFactorial(2*m - 1) * powf(1 - x*x, m / 2.0); // Special case
-
-    pnm1 =  x;
-    pnm2 = 1;
-    pn = 0;
-
-    for(i=2; i<=n; i++)
-    {
-        pn = ((2*i - 1)*x*pnm1 - (i - 1)*pnm2) / (float) i;
-        pnm2 = pnm1;
-        pnm1 = pn;
-    }
-
-    if (m > 0)
-        pn = powf(-1, m) * (1 - x*x) * pn;
-
-    return pn;
 }
 
 float Geomag_ComputePotentialAtPoint(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* CoordSpherical, Geomag_MagneticModel_t* TimedMagneticModel)
@@ -540,7 +518,7 @@ float Geomag_ComputePotentialAtPoint(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSphe
             fieldterm = 0;
             fieldterm += TimedMagneticModel->Main_Field_Coeff_G[i] * cosf(CoordSpherical->lambda * m);
             fieldterm += TimedMagneticModel->Main_Field_Coeff_H[i] * sinf(CoordSpherical->lambda * m);
-            legendreterm = Geomag_CalcLegendere(n, m, cosf(-CoordSpherical->phig + M_PI_2));
+            legendreterm = Geomag_CalcLegendere(n, m, cosf(CoordSpherical->phig));
             res += altterm * fieldterm * legendreterm;
             //printf("i=%d, n=%d, m=%d, g=%f, h=%f\n", i, n, m, TimedMagneticModel->Main_Field_Coeff_G[i], TimedMagneticModel->Main_Field_Coeff_H[i]);
         }
