@@ -1,11 +1,13 @@
 #include <Geomag/Geomag.h>
 
-#include <miscdefs.h>
-#include <VecUtils.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
+#include <miscdefs.h>
+#include <VecUtils.h>
+
+#include <Geomag/GeomagLib.h>
 
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,7 +138,7 @@ static void Geomag_SphericalToCartesian(Geomag_CoordSpherical_t* Sphe, Vec3D_t* 
     Cart->Z = Sphe->r * sinf(Sphe->phig  );
 }
 
-static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, Geomag_CoordGeodetic_t* CoordGeodetic)
+static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, MAGtype_CoordGeodetic* CoordGeodetic)
 {
     float32_t b,r,e,f,p,q,d,v,g,t,zlong,rlat;
 
@@ -211,7 +213,7 @@ static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, f
     }
 }
 
-static void Geomag_GeodeticToSpherical(Geomag_Ellipsoid_t* Ellip, Geomag_CoordGeodetic_t* CoordGeodetic, Geomag_CoordSpherical_t *CoordSpherical) {
+static void Geomag_GeodeticToSpherical(Geomag_Ellipsoid_t* Ellip, MAGtype_CoordGeodetic* CoordGeodetic, MAGtype_CoordSpherical *CoordSpherical) {
     float32_t CosLat, SinLat, rc, xp, zp; /*all local variables */
 
     /*
@@ -651,8 +653,14 @@ void Geomag_RunTests(const char *filename)
 FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t* MagEquatorial)
 {
     Vec3D_t SatLocal;
-
     float32_t theta, phi;
+    Geomag_MagneticModel_t MagneticModel;
+    Geomag_MagneticModel_t TimedMagneticModel;
+    MAGtype_Ellipsoid Ellip;
+    Geomag_Geoid_t Geoid;
+    MAGtype_CoordGeodetic CoordGeodetic;
+    MAGtype_CoordSpherical CoordSpherical;
+    Geomag_GeoMagneticElements_t GeomagElements;
 
     // Angle between prime meridian and vernal equinox
     // Distance we'd need to cover to align our prime meridian with vernal equinox.
@@ -668,18 +676,8 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     arm_atan2_f32(sqrtf(SatLocal.X*SatLocal.X + SatLocal.Y*SatLocal.Y), SatLocal.Z, &theta);
     arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
 
-    Geomag_MagneticModel_t MagneticModel;
-    Geomag_MagneticModel_t TimedMagneticModel;
-    
-    Geomag_Ellipsoid_t Ellip;
-    Geomag_Geoid_t Geoid;
-    
-    Geomag_CoordGeodetic_t CoordGeodetic;
-    Geomag_CoordSpherical_t CoordSpherical;
-    Geomag_GeoMagneticElements_t GeomagElements;
-
     // Reads from hard-coded database, for now
-    FRESULT fres = Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel); errorcheck_ret(fres);
+    Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
     Geomag_InitializeModel(&TimedMagneticModel);
     Geomag_TimelyModifyMagModel(t, &MagneticModel, &TimedMagneticModel);
     
@@ -689,12 +687,9 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     Geomag_CartesianToGeodetic(&Ellip, SatLocal.X, SatLocal.Y, SatLocal.Z, &CoordGeodetic);
     Geomag_GeodeticToSpherical(&Ellip, &CoordGeodetic, &CoordSpherical);
     
-    Geomag_Compute(&Ellip, &CoordSpherical, &CoordGeodetic, &TimedMagneticModel, &GeomagElements);
+    MAG_Geomag(Ellip, CoordSpherical, CoordGeodetic, &TimedMagneticModel, &GeomagElements);
 
-    *MagEquatorial = GeomagElements.g;
-    MagEquatorial->X = MagEquatorial->Y = 0;
-    MagEquatorial->Z = GeomagElements.F;
-    //Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
+    Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
 
     return FR_OK;
 }
