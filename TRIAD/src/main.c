@@ -10,6 +10,8 @@ typedef float vec3_t[3];
 
 vec3_t vec3_origin = {0, 0, 0};
 
+float sampleelevation = 0;
+
 void VectorCopy(vec3_t dest, vec3_t v)
 {
     int i;
@@ -302,7 +304,7 @@ void drawmagfield(void)
 {
     const int nsamples = 512;
     const float phi = M_PI * (float) (3.0 - sqrtf(5));
-    const float d = 6371 + 512;
+    const float d = 6371 + sampleelevation;
 
     int i;
 
@@ -342,10 +344,14 @@ void drawmagfield(void)
     }
 }
 
+struct nk_context *nukcontext;
+
 void render(void)
 {
     vec3_t col;
     vec3_t end;
+
+    nk_glfw3_new_frame();
 
     glEnable(GL_DEPTH_TEST);
 
@@ -368,6 +374,18 @@ void render(void)
 
     drawball(vec3_origin, 6371, col);
 
+    if (nk_begin(nukcontext, "mag vis", nk_rect(50, 50, 200, 200),
+                     NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE)) 
+    {
+        nk_layout_row_static(nukcontext, 30, 256, 1);
+        
+        nk_label(nukcontext, "sample altitude in km:", NK_TEXT_LEFT);
+        nk_slider_float(nukcontext, 0, &sampleelevation, 8192, 16);
+    }
+    nk_end(nukcontext);
+
+    nk_glfw3_render(NK_ANTI_ALIASING_ON);
+
     drawmagfield();    
 }
 
@@ -375,6 +393,8 @@ int main(int argc, char** argv)
 {
     GLFWwindow *win;
     Vec3D_t in, out, expect;
+    struct nk_font_atlas *atlas;
+    struct nk_font *font;
 
     Geomag_RunTests("WMM2025_TestValues.txt");
     in.X = 1;
@@ -385,6 +405,12 @@ int main(int argc, char** argv)
 
     windowinginit();
     win = makewindow();
+
+    nukcontext = nk_glfw3_init(win, NK_GLFW3_INSTALL_CALLBACKS);
+    nk_glfw3_font_stash_begin(&atlas);
+    font = nk_font_atlas_add_default(atlas, 14, 0);
+    nk_glfw3_font_stash_end();
+    nukcontext->style.font = &font->handle;
 
     while(!glfwWindowShouldClose(win))
     {

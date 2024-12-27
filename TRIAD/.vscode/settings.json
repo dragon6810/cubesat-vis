@@ -2,6 +2,9 @@
     "files.associations": {
         "limits": "c",
         "math.h": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "window.h": "c",
+        "geomag.h": "c",
+        "nuklear_glfw_gl2.h": "c"
     }
 }

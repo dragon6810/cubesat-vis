@@ -11,7 +11,7 @@ SRC_DIR := src
 BIN_FILE := $(BIN_DIR)/triad
 SRC_FILE := $(shell find $(SRC_DIR) -name '*.c')
 OBJ_FILE := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRC_FILE))
-CC_FLAGS := $(CC_FLAGS) -I$(SRC_DIR) -I../common/inc/
+CC_FLAGS := $(CC_FLAGS) -I$(SRC_DIR) -I../common/inc/ -Ilib/inc
 LD_FLAGS := $(LD_FLAGS)
 
 LIBS_LINUX := -lm -lGL -lGLU -lGLEW -lglfw
