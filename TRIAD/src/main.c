@@ -302,7 +302,7 @@ void drawmagfield(void)
 {
     const int nsamples = 512;
     const float phi = M_PI * (float) (3.0 - sqrtf(5));
-    const float d = 6371 + 1024;
+    const float d = 6371 + 512;
 
     int i;
 

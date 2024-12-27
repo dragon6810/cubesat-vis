@@ -586,27 +586,19 @@ static void Geomag_HorizontalToEquatorial(MAGtype_GeoMagneticElements* MagHorizo
     phi = DEG2RAD(theta);
 
     MagEquatorial->X =
-        MagHorizontal->X * -sinf(phi) *  cosf(lambda) + 
-        MagHorizontal->Y * -sinf(phi) *  sinf(lambda) +
-        MagHorizontal->Z *  sinf(phi) *  1.0         ;
+        MagHorizontal->X * -sinf(phi) * cosf(lambda) + 
+        MagHorizontal->Y *  1.0       * sinf(lambda) + 
+        MagHorizontal->Z * -cosf(phi) * cosf(lambda);
 
     MagEquatorial->Y =
-        MagHorizontal->X *  1.0       *  sinf(lambda) + 
-        MagHorizontal->Y *  1.0       *  cosf(lambda) +
-        MagHorizontal->Z *  0.0       *  0.0         ;
+        MagHorizontal->X * -sinf(phi) * sinf(lambda) + 
+        MagHorizontal->Y *  1.0       * cosf(lambda) + 
+        MagHorizontal->Z * -cosf(phi) * sinf(lambda);
 
     MagEquatorial->Z =
-        MagHorizontal->X * -cosf(phi) *  cosf(lambda) + 
-        MagHorizontal->Y * -cosf(phi) *  sinf(lambda) +
-        MagHorizontal->Z * -sinf(phi) *  1.0         ; 
-
-    return;
-
-    spherical.X =  MagHorizontal->Y;
-    spherical.Y = -MagHorizontal->Z;
-    spherical.Z =  MagHorizontal->X;
-
-    Vec_RotateSpher(&spherical, phi, lambda, MagEquatorial);
+        MagHorizontal->X *  sinf(phi) * 1.0          + 
+        MagHorizontal->Y *  0.0       * 0.0          + 
+        MagHorizontal->Z * -sinf(phi) * 1.0;
 }
 
 void Geomag_RunTests(const char *filename)
@@ -614,7 +606,7 @@ void Geomag_RunTests(const char *filename)
     int i;
 
     FILE *ptr;
-    float year, altitude, latitude, longitude, testp;
+    float year, altitude, latitude, longitude, testp, x, y, z;
     time_t time;
     float p;
     float delta;
@@ -643,8 +635,8 @@ void Geomag_RunTests(const char *filename)
     Geomag_SetDefaults(&Ellip, &Geoid);
 
     i = 0;
-    while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %*f %*f %*f %f %*f %*f %*f %*f %*f %*f %*f\n", 
-                  &year, &altitude, &latitude, &longitude, &testp) == 5) 
+    while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %f %f %f %f %*f %*f %*f %*f %*f %*f %*f\n", 
+                  &year, &altitude, &latitude, &longitude, &x, &y, &z, &testp) == 8) 
     {
         time = (time_t)((year - 1970) * 365.25 * 24 * 3600);
 
@@ -658,7 +650,8 @@ void Geomag_RunTests(const char *filename)
         cart.Y = longitude;
         cart.Z = altitude;
         Geomag_GetMagEquatorial(&time, &cart, &vec);
-        p = vec.X;
+        p = sqrtf(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
+        testp = sqrtf(x * x + y * y + z * z);
 
         printf("test %d:\n", i++);
         printf("  Input: Year=%.2f, Altitude=%.2f km, Latitude=%.2f deg, Longitude=%.2f deg\n",
