@@ -580,22 +580,33 @@ static void Geomag_Compute(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* C
 static void Geomag_HorizontalToEquatorial(MAGtype_GeoMagneticElements* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p)
 {
     float lambda, phi;
+    Vec3D_t spherical;
 
     lambda = DEG2RAD(phi_p);
     phi = DEG2RAD(theta);
 
-    MagEquatorial->X = 
-        MagHorizontal->X * -sinf(phi) *  cosf(lambda) +
+    MagEquatorial->X =
+        MagHorizontal->X * -sinf(phi) *  cosf(lambda) + 
         MagHorizontal->Y * -sinf(phi) *  sinf(lambda) +
-        MagHorizontal->Z *  cosf(phi) *  1.0         ;
+        MagHorizontal->Z *  sinf(phi) *  1.0         ;
+
     MagEquatorial->Y =
-        MagHorizontal->X *  cosf(phi) *  cosf(lambda) +
-        MagHorizontal->Y *  cosf(phi) *  sinf(lambda) +
-        MagHorizontal->Z *  sinf(phi);
+        MagHorizontal->X *  1.0       *  sinf(lambda) + 
+        MagHorizontal->Y *  1.0       *  cosf(lambda) +
+        MagHorizontal->Z *  0.0       *  0.0         ;
+
     MagEquatorial->Z =
-        MagHorizontal->X *  1.0       *  sinf(lambda) +
-        MagHorizontal->Y *  1.0       * -cosf(lambda) +
-        MagHorizontal->Z *  0;
+        MagHorizontal->X * -cosf(phi) *  cosf(lambda) + 
+        MagHorizontal->Y * -cosf(phi) *  sinf(lambda) +
+        MagHorizontal->Z * -sinf(phi) *  1.0         ; 
+
+    return;
+
+    spherical.X =  MagHorizontal->Y;
+    spherical.Y = -MagHorizontal->Z;
+    spherical.Z =  MagHorizontal->X;
+
+    Vec_RotateSpher(&spherical, phi, lambda, MagEquatorial);
 }
 
 void Geomag_RunTests(const char *filename)
@@ -723,12 +734,13 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     while(CoordGeodetic.phi > 360)
         CoordGeodetic.phi -= 360;
 
-    printf("Geodetic coords: %f, %f, %f.\n", CoordGeodetic.phi, CoordGeodetic.lambda, CoordGeodetic.HeightAboveEllipsoid);
-
     calculateMagneticField(&CoordGeodetic, &date, &GeomagElements, &GeomagErrors);
     MagEquatorial->X = GeomagElements.X;
     MagEquatorial->Y = GeomagElements.Y;
     MagEquatorial->Z = GeomagElements.Z;
+
+    theta = CoordGeodetic.phi;
+    phi = CoordGeodetic.lambda;
 
     Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
 

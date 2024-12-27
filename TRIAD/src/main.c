@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <VecUtils.h>
+
 #include <Geomag/Geomag.h>
 #include <window/window.h>
 
@@ -130,6 +132,7 @@ void drawcyl(vec3_t start, vec3_t end, vec3_t col)
     glColor3f(col[0], col[1], col[2]);
 
     VectorCross(right, up, dir);
+    VectorNormalize(right, right);
     VectorCross(up, right, dir);
 
     glBegin(GL_QUAD_STRIP);
@@ -183,6 +186,7 @@ void drawcone(vec3_t pos, vec3_t dir, vec3_t col)
     glColor3f(col[0], col[1], col[2]);
 
     VectorCross(right, up, dir);
+    VectorNormalize(right, right);
     VectorCross(up, right, dir);
 
     VectorScale(dir, dir, len);
@@ -276,7 +280,7 @@ void drawball(vec3_t pos, float r, vec3_t col)
 
 void drawmagentry(vec3_t entry, vec3_t pos)
 {
-    const float vecscale = 0.01;
+    const float vecscale = 0.02;
 
     vec3_t start, end;
     vec3_t scaled;
@@ -285,9 +289,6 @@ void drawmagentry(vec3_t entry, vec3_t pos)
     col[0] = 1;
     col[1] = 0.5;
     col[2] = 0;
-    //drawball(pos, VectorLength(entry) * vecscale, col);
-
-    //return;
 
     VectorCopy(start, pos);
     VectorScale(scaled, entry, vecscale);
@@ -299,7 +300,7 @@ void drawmagentry(vec3_t entry, vec3_t pos)
 // Generates and draws samples in fibonacci sphere around origin with distance d
 void drawmagfield(void)
 {
-    const int nsamples = 256;
+    const int nsamples = 512;
     const float phi = M_PI * (float) (3.0 - sqrtf(5));
     const float d = 6371 + 1024;
 
@@ -373,8 +374,14 @@ void render(void)
 int main(int argc, char** argv)
 {
     GLFWwindow *win;
+    Vec3D_t in, out, expect;
 
     Geomag_RunTests("WMM2025_TestValues.txt");
+    in.X = 1;
+    in.Y = 0;
+    in.Z = 0;
+    Vec_RotateSpher(&in, M_PI_4, M_PI_4, &out);
+    printf("in: (%f, %f, %f).\nout: (%f, %f, %f).\n", in.X, in.Y, in.Z, out.X, out.Y, out.Z);
 
     windowinginit();
     win = makewindow();
