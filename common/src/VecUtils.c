@@ -8,10 +8,10 @@ void Vec_RotateSpher(Vec3D_t* V, float theta, float phi, Vec3D_t* result)
 	
     assert(V);
 	
-	float sin_theta = arm_sin_f32(theta); 
+	  float sin_theta = arm_sin_f32(theta); 
     float cos_theta = arm_cos_f32(theta);
 
-	float sin_phi = arm_sin_f32(phi);
+	  float sin_phi = arm_sin_f32(phi);
     float cos_phi = arm_cos_f32(phi);
 	
     res.X = V->X * cos_phi * cos_theta

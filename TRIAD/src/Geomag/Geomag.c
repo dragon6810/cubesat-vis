@@ -577,13 +577,25 @@ static void Geomag_Compute(Geomag_Ellipsoid_t* Ellip, Geomag_CoordSpherical_t* C
 #endif
 }
 
-static void Geomag_HorizontalToEquatorial(Geomag_GeoMagneticElements_t* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p) {
-    float32_t theta_p = -(theta + PI/2);
-    // TODO: Check math. Should we indeed sum with Vernal Equinox as we discussed?
-    //                   ^
-    //                   | I dunno man
+static void Geomag_HorizontalToEquatorial(MAGtype_GeoMagneticElements* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p)
+{
+    float lambda, phi;
 
-    Vec_RotateSpher((Vec3D_t*)&(MagHorizontal->Bx), theta_p, phi_p, MagEquatorial);
+    lambda = DEG2RAD(phi_p);
+    phi = DEG2RAD(theta);
+
+    MagEquatorial->X = 
+        MagHorizontal->X * -sinf(phi) *  cosf(lambda) +
+        MagHorizontal->Y * -sinf(phi) *  sinf(lambda) +
+        MagHorizontal->Z *  cosf(phi) *  1.0         ;
+    MagEquatorial->Y =
+        MagHorizontal->X *  cosf(phi) *  cosf(lambda) +
+        MagHorizontal->Y *  cosf(phi) *  sinf(lambda) +
+        MagHorizontal->Z *  sinf(phi);
+    MagEquatorial->Z =
+        MagHorizontal->X *  1.0       *  sinf(lambda) +
+        MagHorizontal->Y *  1.0       * -cosf(lambda) +
+        MagHorizontal->Z *  0;
 }
 
 void Geomag_RunTests(const char *filename)
@@ -612,6 +624,7 @@ void Geomag_RunTests(const char *filename)
     Geomag_Ellipsoid_t Ellip;
     Geomag_CoordSpherical_t CoordSpherical;
     Geomag_Geoid_t Geoid;
+    Vec3D_t cart, vec;
 
     Geomag_InitializeModel(&MagneticModel);
     Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
@@ -622,14 +635,19 @@ void Geomag_RunTests(const char *filename)
     while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %*f %*f %*f %f %*f %*f %*f %*f %*f %*f %*f\n", 
                   &year, &altitude, &latitude, &longitude, &testp) == 5) 
     {
+        time = (time_t)((year - 1970) * 365.25 * 24 * 3600);
+
         CoordSpherical.r = Ellip.re + altitude;
         CoordSpherical.phig = DEG2RAD(latitude);
-        CoordSpherical.lambda = DEG2RAD(longitude);
+        CoordSpherical.lambda = DEG2RAD(longitude) + EARTH_ROT_SPEED * (time - EQUINOX_TIME); // relative to vernal equinox
 
-        time = (time_t)((year - 1970) * 365.25 * 24 * 3600);
-        Geomag_TimelyModifyMagModel(&time, &MagneticModel, &TimedMagneticModel);
+        Geomag_SphericalToCartesian(&CoordSpherical, &cart);
 
-        p = Geomag_ComputePotentialAtPoint(&Ellip, &CoordSpherical, &TimedMagneticModel);
+        cart.X = latitude;
+        cart.Y = longitude;
+        cart.Z = altitude;
+        Geomag_GetMagEquatorial(&time, &cart, &vec);
+        p = vec.X;
 
         printf("test %d:\n", i++);
         printf("  Input: Year=%.2f, Altitude=%.2f km, Latitude=%.2f deg, Longitude=%.2f deg\n",
@@ -660,7 +678,9 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     Geomag_Geoid_t Geoid;
     MAGtype_CoordGeodetic CoordGeodetic;
     MAGtype_CoordSpherical CoordSpherical;
-    Geomag_GeoMagneticElements_t GeomagElements;
+    MAGtype_GeoMagneticElements GeomagElements;
+    MAGtype_GeoMagneticElements GeomagErrors;
+    MAGtype_Date date;
 
     // Angle between prime meridian and vernal equinox
     // Distance we'd need to cover to align our prime meridian with vernal equinox.
@@ -675,19 +695,40 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     // theta is longitude, phi is latitude.
     arm_atan2_f32(sqrtf(SatLocal.X*SatLocal.X + SatLocal.Y*SatLocal.Y), SatLocal.Z, &theta);
     arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
-
-    // Reads from hard-coded database, for now
-    Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
-    Geomag_InitializeModel(&TimedMagneticModel);
-    Geomag_TimelyModifyMagModel(t, &MagneticModel, &TimedMagneticModel);
     
     Geomag_SetDefaults(&Ellip, &Geoid);
     Geoid.Geoid_Initialized = pdTRUE;
 
     Geomag_CartesianToGeodetic(&Ellip, SatLocal.X, SatLocal.Y, SatLocal.Z, &CoordGeodetic);
-    Geomag_GeodeticToSpherical(&Ellip, &CoordGeodetic, &CoordSpherical);
-    
-    MAG_Geomag(Ellip, CoordSpherical, CoordGeodetic, &TimedMagneticModel, &GeomagElements);
+    // Geomag_GeodeticToSpherical(&Ellip, &CoordGeodetic, &CoordSpherical);
+
+    date.DecimalYear = Geomag_TimeToYear(t);
+
+    CoordGeodetic.lambda = RAD2DEG(CoordGeodetic.lambda);
+    CoordGeodetic.phi = RAD2DEG(CoordGeodetic.phi);
+
+    CoordGeodetic.phi = -CoordGeodetic.phi + 90;
+
+    CoordGeodetic.phi = SatEquatorial->X;
+    CoordGeodetic.lambda = SatEquatorial->Y;
+    CoordGeodetic.HeightAboveEllipsoid = SatEquatorial->Z;
+
+    while(CoordGeodetic.lambda < -360)
+        CoordGeodetic.lambda += 360;
+    while(CoordGeodetic.lambda > 360)
+        CoordGeodetic.lambda -= 360;
+
+    while(CoordGeodetic.phi < -360)
+        CoordGeodetic.phi += 360;
+    while(CoordGeodetic.phi > 360)
+        CoordGeodetic.phi -= 360;
+
+    printf("Geodetic coords: %f, %f, %f.\n", CoordGeodetic.phi, CoordGeodetic.lambda, CoordGeodetic.HeightAboveEllipsoid);
+
+    calculateMagneticField(&CoordGeodetic, &date, &GeomagElements, &GeomagErrors);
+    MagEquatorial->X = GeomagElements.X;
+    MagEquatorial->Y = GeomagElements.Y;
+    MagEquatorial->Z = GeomagElements.Z;
 
     Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
 

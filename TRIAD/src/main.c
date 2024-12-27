@@ -276,7 +276,7 @@ void drawball(vec3_t pos, float r, vec3_t col)
 
 void drawmagentry(vec3_t entry, vec3_t pos)
 {
-    const float vecscale = 40;
+    const float vecscale = 0.01;
 
     vec3_t start, end;
     vec3_t scaled;
@@ -285,9 +285,9 @@ void drawmagentry(vec3_t entry, vec3_t pos)
     col[0] = 1;
     col[1] = 0.5;
     col[2] = 0;
-    drawball(pos, logf(VectorLength(entry)) * vecscale, col);
+    //drawball(pos, VectorLength(entry) * vecscale, col);
 
-    return;
+    //return;
 
     VectorCopy(start, pos);
     VectorScale(scaled, entry, vecscale);
@@ -328,6 +328,10 @@ void drawmagfield(void)
         vin.Y = in[1];
         vin.Z = in[2];
 
+        vin.X = RAD2DEG(asinf(y));
+        vin.Y = RAD2DEG(theta);
+        vin.Z = d - 6371;
+
         assert(Geomag_GetMagEquatorial(&t, &vin, &vout) == FR_OK);
         out[0] = vout.X;
         out[1] = vout.Y;
@@ -363,7 +367,7 @@ void render(void)
 
     drawball(vec3_origin, 6371, col);
 
-    //drawmagfield();    
+    drawmagfield();    
 }
 
 int main(int argc, char** argv)

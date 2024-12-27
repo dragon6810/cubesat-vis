@@ -1,8 +1,8 @@
 CC := gcc -c
-CC_FLAGS := -Wall -O0 -g -std=gnu11
+CC_FLAGS := -Wall -O0 -g -std=gnu11 -fsanitize=address
 
 LD := gcc
-LD_FLAGS :=
+LD_FLAGS := -fsanitize=address
 
 BIN_DIR := bin
 OBJ_DIR := obj
