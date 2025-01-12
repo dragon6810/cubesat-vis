@@ -331,9 +331,9 @@ void drawmagfield(void)
         vin.Y = in[1];
         vin.Z = in[2];
 
-        vin.X = RAD2DEG(asinf(y));
-        vin.Y = RAD2DEG(theta);
-        vin.Z = d - 6371;
+        //vin.X = RAD2DEG(asinf(y));
+        //vin.Y = RAD2DEG(theta);
+        //vin.Z = d - 6371;
 
         assert(Geomag_GetMagEquatorial(&t, &vin, &vout) == FR_OK);
         out[0] = vout.X;
@@ -397,11 +397,6 @@ int main(int argc, char** argv)
     struct nk_font *font;
 
     Geomag_RunTests("WMM2025_TestValues.txt");
-    in.X = 1;
-    in.Y = 0;
-    in.Z = 0;
-    Vec_RotateSpher(&in, M_PI_4, M_PI_4, &out);
-    printf("in: (%f, %f, %f).\nout: (%f, %f, %f).\n", in.X, in.Y, in.Z, out.X, out.Y, out.Z);
 
     windowinginit();
     win = makewindow();

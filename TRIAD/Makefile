@@ -1,5 +1,5 @@
 CC := gcc -c
-CC_FLAGS := -Wall -Wunused -O3 -g -std=gnu11 -fsanitize=address
+CC_FLAGS := -Wall -Wunused -O0 -g -std=gnu11 -fsanitize=address
 
 LD := gcc
 LD_FLAGS := -fsanitize=address
@@ -33,7 +33,7 @@ mkdirs:
 	@mkdir -p $(BIN_DIR)
 	@mkdir -p $(OBJ_DIR)
 
-$(BIN_FILE): $(OBJ_FILE)
+$(BIN_FILE): $(OBJ_FILE) ../common/bin/common.a
 	$(LD) -o $(BIN_FILE) $(OBJ_FILE) $(LD_FLAGS) $(LIBS)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c

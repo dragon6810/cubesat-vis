@@ -140,77 +140,36 @@ static void Geomag_SphericalToCartesian(Geomag_CoordSpherical_t* Sphe, Vec3D_t* 
 
 static void Geomag_CartesianToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, MAGtype_CoordGeodetic* CoordGeodetic)
 {
-    float32_t b,r,e,f,p,q,d,v,g,t,zlong,rlat;
+    const int maxiters = 3;
 
-    /*
-    *   1.0 compute semi-minor axis and set sign to that of z in order
-    *       to get sign of Phi correct
-    */
+    int i;
 
-    if (z < 0.0)
-        b = -Ellip->b;
-    else
-        b = Ellip->b;
+    float d, sx, sy, sz;
+    float k, biga, bigb;
+    float phi, horlen, h, sinphi, bign;
 
-    /*
-    *   2.0 compute intermediate values for latitude
-    */
-    arm_sqrt_f32(x*x + y*y, &r);
-    e = ( b*z - (Ellip->a*Ellip->a - b*b) ) / ( Ellip->a*r );
-    f = ( b*z + (Ellip->a*Ellip->a - b*b) ) / ( Ellip->a*r );
-    
-    /*
-    *   3.0 find solution to:
-    *       t^4 + 2*E*t^3 + 2*F*t - 1 = 0
-    */
-    p= (4.0 / 3.0) * (e*f + 1.0);
-    q= 2.0 * (e*e - f*f);
-    d= p*p*p + q*q;
+    sx = x / Ellip->a;
+    sy = y / Ellip->a;
+    sz = z / Ellip->b;
+    // < 1: inside ellipsoid, = 1: on surface of ellipsoid, >1: outside ellipsoid
+    d = sx * sx + sy * sy + sz * sz;
 
-    if( d >= 0.0 )
+    CoordGeodetic->lambda =  atan2f(y, x);
+
+    horlen = sqrtf(x * x + y * y);
+    phi = atan2f(z, horlen);
+    for(i=0; i<maxiters; i++)
     {
-        arm_sqrt_f32(d, &d);
-        v= pow( (d - q), (1.0 / 3.0) ) - pow( (d+ q), (1.0 / 3.0) );
+        sinphi = sinf(phi);
+        bign = Ellip->a / sqrtf(1.0 - Ellip->epssq * sinphi * sinphi);
+        phi = atan2f(z + Ellip->epssq * bign * sinphi, horlen);
     }
-    else
-        {
-        float32_t sqrt_p;
-        arm_sqrt_f32(-p, &sqrt_p);
-        v= 2.0 * sqrt_p
-            * arm_cos_f32( acos( q/(p * sqrt_p) ) / 3.0 );
-        }
-    /*
-    *   4.0 improve v
-    *       NOTE: not really necessary unless point is near pole
-    */
-    if( v*v < fabs(p) ) {
-            v= -(v*v*v + 2.0*q) / (3.0*p);
-    }
-    arm_sqrt_f32(e*e + v, &g);
-    g = (g + e) / 2.0;
-    arm_sqrt_f32(g*g  + (f - v*g)/(2.0*g - e), &t);
-    t = t - g;
 
-    arm_atan2_f32((Ellip->a * (1.0 - t * t)), (2.0 * b * t), &rlat); // ORIGINAL: rlat =atan( (Ellip->a*(1.0 - t*t)) / (2.0*b*t) );
-    CoordGeodetic->phi = RAD2DEG(rlat);
+    h = horlen / cosf(phi) - bign;
 
-    /*
-    *   5.0 compute height above ellipsoid
-    */
-    CoordGeodetic->HeightAboveEllipsoid = (r - Ellip->a*t) * arm_cos_f32(rlat) + (z - b) * arm_sin_f32(rlat);
-
-    /*
-    *   6.0 compute longitude east of Greenwich
-    */
-    arm_atan2_f32(y, x, &zlong);
-    if( zlong < 0.0 )
-            zlong= zlong + 2*PI;
-
-    CoordGeodetic->lambda = RAD2DEG(zlong);
-    while(CoordGeodetic->lambda > 180)
-    {
-        CoordGeodetic->lambda-=360;
-    }
+    CoordGeodetic->lambda = RAD2DEG(CoordGeodetic->lambda);
+    CoordGeodetic->phi = RAD2DEG(phi);
+    CoordGeodetic->HeightAboveEllipsoid = CoordGeodetic->HeightAboveGeoid = h;
 }
 
 static float32_t Geomag_TimeToYear(time_t* t) {
@@ -230,7 +189,7 @@ static float32_t Geomag_TimeToYear(time_t* t) {
     return year + (date.tm_yday)/(days);
 }
 
-static void Geomag_HorizontalToEquatorial(MAGtype_GeoMagneticElements* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p)
+static void Geomag_NEDToECEF(MAGtype_GeoMagneticElements* MagHorizontal, Vec3D_t *MagEquatorial, float32_t theta, float32_t phi_p)
 {
     float lambda, phi;
     Vec3D_t spherical;
@@ -239,19 +198,53 @@ static void Geomag_HorizontalToEquatorial(MAGtype_GeoMagneticElements* MagHorizo
     phi = DEG2RAD(theta);
 
     MagEquatorial->X =
-        MagHorizontal->X * -sinf(phi) * cosf(lambda) + 
-        MagHorizontal->Y *  1.0       * sinf(lambda) + 
-        MagHorizontal->Z * -cosf(phi) * cosf(lambda);
+        MagHorizontal->X * -sinf(phi) *  cosf(lambda) + 
+        MagHorizontal->Y *  1.0       * -sinf(lambda) + 
+        MagHorizontal->Z * -cosf(phi) *  cosf(lambda);
 
     MagEquatorial->Y =
-        MagHorizontal->X * -sinf(phi) * sinf(lambda) + 
-        MagHorizontal->Y *  1.0       * cosf(lambda) + 
-        MagHorizontal->Z * -cosf(phi) * sinf(lambda);
+        MagHorizontal->X * -sinf(phi) *  sinf(lambda) + 
+        MagHorizontal->Y *  1.0       *  cosf(lambda) + 
+        MagHorizontal->Z * -cosf(phi) *  sinf(lambda);
 
     MagEquatorial->Z =
-        MagHorizontal->X *  sinf(phi) * 1.0          + 
-        MagHorizontal->Y *  0.0       * 0.0          + 
-        MagHorizontal->Z * -sinf(phi) * 1.0;
+        MagHorizontal->X *  cosf(phi) *  1.0          + 
+        MagHorizontal->Y *  0.0       *  0.0          + 
+        MagHorizontal->Z * -sinf(phi) *  1.0;
+}
+
+static void Geomag_TestHorizontalToEquatorial(void)
+{
+    Vec3D_t MagEquatorial;
+    MAGtype_GeoMagneticElements MagHorizontal;
+
+    MagHorizontal.X = MagHorizontal.Y = MagHorizontal.Z = 0;
+    MagHorizontal.X = 20;
+    MagHorizontal.Y = 0;
+    MagHorizontal.Z = 1;
+
+    Geomag_NEDToECEF(&MagHorizontal, &MagEquatorial, 0, 90);
+    printf("Mag Equatorial: %f, %f, %f.\n", MagEquatorial.X, MagEquatorial.Y, MagEquatorial.Z);
+}
+
+// math mostly from https://journals.pan.pl/Content/98324/PDF/art05.pdf
+static void Geomag_TestCartesianToGeodetic(void)
+{
+    MAGtype_Ellipsoid Ellip;
+    Geomag_Geoid_t Geoid;
+    Vec3D_t cartesian;
+    MAGtype_CoordGeodetic geodetic;
+
+    Geomag_SetDefaults(&Ellip, &Geoid);
+    Geoid.Geoid_Initialized = pdTRUE;
+
+    cartesian.X = 7000;
+    cartesian.Y = -7000;
+    cartesian.Z = 7000;
+
+    Geomag_CartesianToGeodetic(&Ellip, cartesian.X, cartesian.Y, cartesian.Z, &geodetic);
+    printf("Coord Cartesian: %f, %f, %f.\n", cartesian.X, cartesian.Y, cartesian.Z);
+    printf("Coord Geodetic: %f, %f, %f.\n", geodetic.lambda, geodetic.phi, geodetic.HeightAboveEllipsoid);
 }
 
 void Geomag_RunTests(const char *filename)
@@ -316,7 +309,36 @@ void Geomag_RunTests(const char *filename)
         printf("  Difference: %.6f\n\n", delta);
     }
 
+    Geomag_TestHorizontalToEquatorial();
+    Geomag_TestCartesianToGeodetic();
+
     fclose(ptr);
+}
+
+void Geomag_ECEFToECI(time_t t, const Vec3D_t* ECEF, Vec3D_t* ECI)
+{
+    assert(ECEF);
+    assert(ECI);
+
+    // The exact negative of Geomac_ECIToECEF
+    float32_t rotAngle = EARTH_ROT_SPEED * (t - EQUINOX_TIME);
+    
+    Vec_RotateSpher(ECEF, 0, rotAngle, ECI);
+}
+
+void Geomag_ECIToECEF(time_t t, const Vec3D_t* ECI, Vec3D_t* ECEF)
+{
+    assert(ECI);
+    assert(ECEF);
+
+    // Angle between prime meridian and vernal equinox
+    // Distance we'd need to cover to align our prime meridian with vernal equinox.
+    // rotation = speed * time so
+    // rotAngle = EARTH_ROT_SPEED * EQUINOX_TIME - EARTH_ROT_SPEED * t so
+    // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
+    float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
+    
+    Vec_RotateSpher(ECI, 0, rotAngle, ECEF);
 }
 
 /*
@@ -325,9 +347,13 @@ void Geomag_RunTests(const char *filename)
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
-FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t* MagEquatorial)
+/*
+    Take in ECI coordinates and spits out ECI coordinates
+*/
+FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEquatorial)
 {
-    Vec3D_t SatLocal;
+    Vec3D_t SatECEF;
+    Vec3D_t MagECEF;
     float32_t theta, phi;
     Geomag_MagneticModel_t MagneticModel;
     Geomag_MagneticModel_t TimedMagneticModel;
@@ -338,57 +364,27 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t
     MAGtype_GeoMagneticElements GeomagElements;
     MAGtype_GeoMagneticElements GeomagErrors;
     MAGtype_Date date;
-
-    // Angle between prime meridian and vernal equinox
-    // Distance we'd need to cover to align our prime meridian with vernal equinox.
-    // rotation = speed * time so
-    // rotAngle = EARTH_ROT_SPEED * EQUINOX_TIME - EARTH_ROT_SPEED * t so
-    // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
-    float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - (*t));
-    // SatLocal is relative to prime meridian
-    Vec_RotateSpher(SatEquatorial, 0, rotAngle, &SatLocal);
     
-    // Lattitude and Longitude angles for rotation at the end
-    // theta is longitude, phi is latitude.
-    arm_atan2_f32(sqrtf(SatLocal.X*SatLocal.X + SatLocal.Y*SatLocal.Y), SatLocal.Z, &theta);
-    arm_atan2_f32(SatLocal.Y, SatLocal.X, &phi);
+    Geomag_ECIToECEF(*t, SatECI, &SatECEF);
+    
+    // theta is latitude, phi is longitude.
+    arm_atan2_f32(sqrtf(SatECEF.X*SatECEF.X + SatECEF.Y*SatECEF.Y), SatECEF.Z, &theta);
+    arm_atan2_f32(SatECEF.Y, SatECEF.X, &phi);
+    theta = RAD2DEG(theta);
+    phi = RAD2DEG(phi);
+    printf("lat, long: (%f, %f).\n", theta, phi);
     
     Geomag_SetDefaults(&Ellip, &Geoid);
     Geoid.Geoid_Initialized = pdTRUE;
 
-    Geomag_CartesianToGeodetic(&Ellip, SatLocal.X, SatLocal.Y, SatLocal.Z, &CoordGeodetic);
-    // Geomag_GeodeticToSpherical(&Ellip, &CoordGeodetic, &CoordSpherical);
+    Geomag_CartesianToGeodetic(&Ellip, SatECEF.X, SatECEF.Y, SatECEF.Z, &CoordGeodetic);
 
     date.DecimalYear = Geomag_TimeToYear(t);
 
-    CoordGeodetic.lambda = RAD2DEG(CoordGeodetic.lambda);
-    CoordGeodetic.phi = RAD2DEG(CoordGeodetic.phi);
-
-    CoordGeodetic.phi = -CoordGeodetic.phi + 90;
-
-    CoordGeodetic.phi = SatEquatorial->X;
-    CoordGeodetic.lambda = SatEquatorial->Y;
-    CoordGeodetic.HeightAboveEllipsoid = SatEquatorial->Z;
-
-    while(CoordGeodetic.lambda < -360)
-        CoordGeodetic.lambda += 360;
-    while(CoordGeodetic.lambda > 360)
-        CoordGeodetic.lambda -= 360;
-
-    while(CoordGeodetic.phi < -360)
-        CoordGeodetic.phi += 360;
-    while(CoordGeodetic.phi > 360)
-        CoordGeodetic.phi -= 360;
-
     calculateMagneticField(&CoordGeodetic, &date, &GeomagElements, &GeomagErrors);
-    MagEquatorial->X = GeomagElements.X;
-    MagEquatorial->Y = GeomagElements.Y;
-    MagEquatorial->Z = GeomagElements.Z;
 
-    theta = CoordGeodetic.phi;
-    phi = CoordGeodetic.lambda;
-
-    Geomag_HorizontalToEquatorial(&GeomagElements, MagEquatorial, theta, phi);
+    Geomag_NEDToECEF(&GeomagElements, &MagECEF, theta, phi);
+    Geomag_ECEFToECI(*t, &MagECEF, MagEquatorial);
 
     return FR_OK;
 }

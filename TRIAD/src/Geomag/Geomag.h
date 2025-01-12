@@ -135,7 +135,7 @@ typedef struct {
 * @return               FRESULT containing result of SD interface
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatEquatorial, Vec3D_t* MagEquatorial);
+FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEquatorial);
 void Geomag_RunTests(const char *filename);
 
 #ifdef DEBUG_ENABLED
