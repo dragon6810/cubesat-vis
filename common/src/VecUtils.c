@@ -14,7 +14,7 @@ void Vec_RotateSpher(Vec3D_t* V, float theta, float phi, Vec3D_t* result)
 	
     initialangle = -atan2f(V->Y, V->X);
     
-    #if 0
+    #if 1
     // Rotate res onto the XZ plane
     temp = *V;
     res.X = temp.X * cosf(initialangle) - temp.Y * sinf(initialangle);
@@ -37,9 +37,6 @@ void Vec_RotateSpher(Vec3D_t* V, float theta, float phi, Vec3D_t* result)
         res.Y = temp.X * sinf(phi) + temp.Y * cosf(phi);
         res.Z = temp.Z;
     #endif
-
-    printf("ϕ: %f, θ: %f, (%f, %f, %f):\n", phi, theta, V->X, V->Y, V->Z);
-    printf("(%f, %f, %f).\n", res.X, res.Y, res.Z);
 
     if(result)
         *result = res;
