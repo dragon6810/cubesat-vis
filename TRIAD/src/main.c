@@ -5,6 +5,7 @@
 
 #include <Geomag/Geomag.h>
 #include <window/window.h>
+#include <CoordinateConversions/CoordinateConversions.h>
 
 typedef float vec3_t[3];
 
@@ -396,6 +397,7 @@ int main(int argc, char** argv)
     struct nk_font_atlas *atlas;
     struct nk_font *font;
 
+    Coord_TestConversions();
     Geomag_RunTests("WMM2025_TestValues.txt");
 
     windowinginit();

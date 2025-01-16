@@ -8,6 +8,8 @@
 #include <VecUtils.h>
 
 #include <Geomag/GeomagLib.h>
+#include <CoordinateConversions/CoordinateConversions.h>
+#include <Testing/Testing.h>
 
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -19,16 +21,10 @@
 
 #define ATanH(x)	    (0.5 * log((1 + x) / (1 - x)))
 
-/* UTC time at which 0deg N and 0deg E was along the X axis in equatorial coordinates.
-   This happens at the time of a vernal (spring) equinox.
-   (Actually this also happens every day whenever RA 0 crosses the meridian at 0deg N 0deg E,
-   but an equinox is a more convenient reference point.) */
-#define EQUINOX_TIME ((time_t) 1695451800)
 /* Radius of the spherical Earth in meters */
 #define EARTH_R ((float)6378100)
 
 /* Angular speed of Earth's rotation about its axis, in rad/s */
-#define EARTH_ROT_SPEED ((float)7.2921159E-5)
 
 #define errorcheck_ret(fresult) if (fresult != FR_OK) return fresult
 #define errorcheck_goto(fresult, lbl) if (fresult != FR_OK) goto lbl
@@ -48,7 +44,8 @@ static void Geomag_InitializeModel(Geomag_MagneticModel_t * MagneticModel) {
     MagneticModel->nMax = 0;
     MagneticModel->nMaxSecVar = 0;
 
-    for (int i = 0; i < CALCULATE_NUMTERMS(MAX_N_MODE); i++) {
+    for (int i = 0; i < CALCULATE_NUMTERMS(MAX_N_MODE); i++)
+    {
         MagneticModel->Main_Field_Coeff_G[i] = 0;
         MagneticModel->Main_Field_Coeff_H[i] = 0;
         MagneticModel->Secular_Var_Coeff_G[i] = 0;
@@ -131,13 +128,6 @@ static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid)
     Geoid->UseGeoid = MAG_USE_GEOID;
 }
 
-static void Geomag_SphericalToCartesian(Geomag_CoordSpherical_t* Sphe, Vec3D_t* Cart)
-{
-    Cart->X = Sphe->r * cosf(Sphe->lambda) * cosf(Sphe->phig);
-    Cart->Y = Sphe->r * sinf(Sphe->lambda) * cosf(Sphe->phig);
-    Cart->Z = Sphe->r * sinf(Sphe->phig  );
-}
-
 static void Geomag_ECEFToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float32_t y, float32_t z, MAGtype_CoordGeodetic* CoordGeodetic)
 {
     const int maxiters = 3;
@@ -172,7 +162,8 @@ static void Geomag_ECEFToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float3
     CoordGeodetic->HeightAboveEllipsoid = CoordGeodetic->HeightAboveGeoid = h;
 }
 
-static float32_t Geomag_TimeToYear(time_t* t) {
+static float32_t Geomag_TimeToYear(time_t* t)
+{
     struct tm date;
 
     // Shared memory guard because gmtime is not thread-safe
@@ -187,71 +178,6 @@ static float32_t Geomag_TimeToYear(time_t* t) {
     float32_t days = (year % 4 == 0) ? 366.0 : 365.0;
 
     return year + (date.tm_yday)/(days);
-}
-
-static void Geomag_NEDToECEF(MAGtype_GeoMagneticElements* MagNED, Vec3D_t *MagECEF, float32_t theta, float32_t phi_p)
-{
-    float lambda, phi;
-    float sinlambda, coslambda;
-    float sinphi, cosphi;
-    Vec3D_t spherical;
-
-    lambda = DEG2RAD(phi_p);
-    phi = DEG2RAD(theta);
-
-    sinlambda = sinf(lambda);
-    coslambda = cosf(lambda);
-    sinphi = sinf(phi);
-    cosphi = cosf(phi);
-
-    MagECEF->X =
-        MagNED->X * -sinphi *  coslambda + 
-        MagNED->Y *  1.0    *  sinlambda + 
-        MagNED->Z * -cosphi *  coslambda ;
-
-    MagECEF->Y =
-        MagNED->X * -sinphi *  sinlambda + 
-        MagNED->Y *  1.0    *  coslambda + 
-        MagNED->Z * -cosphi *  sinlambda ;
-
-    MagECEF->Z =
-        MagNED->X *  sinphi *  1.0       + 
-        MagNED->Y *  0.0    *  0.0       + 
-        MagNED->Z * -sinphi *  1.0       ;
-}
-
-static void Geomag_TestHorizontalToEquatorial(void)
-{
-    Vec3D_t MagEquatorial;
-    MAGtype_GeoMagneticElements MagHorizontal;
-
-    MagHorizontal.X = MagHorizontal.Y = MagHorizontal.Z = 0;
-    MagHorizontal.X = 20;
-    MagHorizontal.Y = 0;
-    MagHorizontal.Z = 1;
-
-    Geomag_NEDToECEF(&MagHorizontal, &MagEquatorial, 0, 90);
-    printf("Mag Equatorial: %f, %f, %f.\n", MagEquatorial.X, MagEquatorial.Y, MagEquatorial.Z);
-}
-
-// math mostly from https://journals.pan.pl/Content/98324/PDF/art05.pdf
-static void Geomag_TestCartesianToGeodetic(void)
-{
-    MAGtype_Ellipsoid Ellip;
-    Geomag_Geoid_t Geoid;
-    Vec3D_t cartesian;
-    MAGtype_CoordGeodetic geodetic;
-
-    Geomag_SetDefaults(&Ellip, &Geoid);
-    Geoid.Geoid_Initialized = pdTRUE;
-
-    cartesian.X = 7000;
-    cartesian.Y = -7000;
-    cartesian.Z = 7000;
-
-    Geomag_ECEFToGeodetic(&Ellip, cartesian.X, cartesian.Y, cartesian.Z, &geodetic);
-    printf("Coord Cartesian: %f, %f, %f.\n", cartesian.X, cartesian.Y, cartesian.Z);
-    printf("Coord Geodetic: %f, %f, %f.\n", geodetic.lambda, geodetic.phi, geodetic.HeightAboveEllipsoid);
 }
 
 void Geomag_RunTests(const char *filename)
@@ -297,11 +223,10 @@ void Geomag_RunTests(const char *filename)
         CoordSpherical.phig = DEG2RAD(latitude);
         CoordSpherical.lambda = DEG2RAD(longitude) + EARTH_ROT_SPEED * (time - EQUINOX_TIME); // relative to vernal equinox
 
-        Geomag_SphericalToCartesian(&CoordSpherical, &cart);
+        cart.X = CoordSpherical.r * cosf(CoordSpherical.lambda) * cosf(CoordSpherical.phig);
+        cart.Y = CoordSpherical.r * sinf(CoordSpherical.lambda) * cosf(CoordSpherical.phig);
+        cart.Z = CoordSpherical.r * sinf(CoordSpherical.phig);
 
-        cart.X = latitude;
-        cart.Y = longitude;
-        cart.Z = altitude;
         Geomag_GetMagEquatorial(&time, &cart, &vec);
         p = sqrtf(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
         testp = sqrtf(x * x + y * y + z * z);
@@ -316,36 +241,7 @@ void Geomag_RunTests(const char *filename)
         printf("  Difference: %.6f\n\n", delta);
     }
 
-    Geomag_TestHorizontalToEquatorial();
-    Geomag_TestCartesianToGeodetic();
-
     fclose(ptr);
-}
-
-void Geomag_ECEFToECI(time_t t, const Vec3D_t* ECEF, Vec3D_t* ECI)
-{
-    assert(ECEF);
-    assert(ECI);
-
-    // The exact negative of Geomac_ECIToECEF
-    float32_t rotAngle = EARTH_ROT_SPEED * (t - EQUINOX_TIME);
-    
-    Vec_RotateSpher(ECEF, 0, rotAngle, ECI);
-}
-
-void Geomag_ECIToECEF(time_t t, const Vec3D_t* ECI, Vec3D_t* ECEF)
-{
-    assert(ECI);
-    assert(ECEF);
-
-    // Angle between prime meridian and vernal equinox
-    // Distance we'd need to cover to align our prime meridian with vernal equinox.
-    // rotation = speed * time so
-    // rotAngle = EARTH_ROT_SPEED * EQUINOX_TIME - EARTH_ROT_SPEED * t so
-    // rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
-    float32_t rotAngle = EARTH_ROT_SPEED * (EQUINOX_TIME - t);
-    
-    Vec_RotateSpher(ECI, 0, rotAngle, ECEF);
 }
 
 /*
@@ -369,10 +265,12 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEq
     MAGtype_CoordGeodetic CoordGeodetic;
     MAGtype_CoordSpherical CoordSpherical;
     MAGtype_GeoMagneticElements GeomagElements;
+    Vec3D_t MagNED;
     MAGtype_GeoMagneticElements GeomagErrors;
     MAGtype_Date date;
     
-    Geomag_ECIToECEF(*t, SatECI, &SatECEF);
+    //Geomag_ECIToECEF(*t, SatECI, &SatECEF);
+    SatECEF = *SatECI;
 
     // theta is latitude, phi is longitude.
     arm_atan2_f32(sqrtf(SatECEF.X*SatECEF.X + SatECEF.Y*SatECEF.Y), SatECEF.Z, &theta);
@@ -386,13 +284,13 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEq
     Geomag_ECEFToGeodetic(&Ellip, SatECEF.X, SatECEF.Y, SatECEF.Z, &CoordGeodetic);
 
     date.DecimalYear = Geomag_TimeToYear(t);
-
     calculateMagneticField(&CoordGeodetic, &date, &GeomagElements, &GeomagErrors);
 
-    theta = CoordGeodetic.phi;
-    phi = CoordGeodetic.lambda;
-    Geomag_NEDToECEF(&GeomagElements, &MagECEF, theta, phi);
-    Geomag_ECEFToECI(*t, &MagECEF, MagEquatorial);
+    MagNED.X = GeomagElements.X;
+    MagNED.Y = GeomagElements.Y;
+    MagNED.Z = GeomagElements.Z;
+    Coord_NEDToECEF(&MagNED, &MagECEF, theta, phi);
+    Coord_ECEFToECI(*t, &MagECEF, MagEquatorial);
 
     return FR_OK;
 }

@@ -5,6 +5,9 @@
         "assert.h": "c",
         "window.h": "c",
         "geomag.h": "c",
-        "nuklear_glfw_gl2.h": "c"
+        "nuklear_glfw_gl2.h": "c",
+        "coordinateconversions.h": "c",
+        "stdbool.h": "c",
+        "testing.h": "c"
     }
 }

@@ -32,9 +32,6 @@
 
 #define MAXLINELENGTH (1024)
 
-#define RAD2DEG(rad)    ((rad)*(180.0L/PI))
-#define DEG2RAD(deg)    ((deg)*(PI/180.0L))
-
 #define MAG_GEO_POLE_TOLERANCE  1e-5
 #define MAG_USE_GEOID	1    /* 1 Geoid - Ellipsoid difference should be corrected, 0 otherwise */
 
