@@ -207,11 +207,14 @@ void Geomag_RunTests(const char *filename)
     Geomag_CoordSpherical_t CoordSpherical;
     Geomag_Geoid_t Geoid;
     Vec3D_t cart, vec, NED, ECEF, ECI;
+    char testname[12];
 
     Geomag_InitializeModel(&MagneticModel);
     Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
     Geomag_InitializeModel(&TimedMagneticModel);
     Geomag_SetDefaults(&Ellip, &Geoid);
+
+    strcpy(testname, "WMM Test 00");
 
     i = 0;
     while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %f %f %f %f %*f %*f %*f %*f %*f %*f %*f\n", 
@@ -235,16 +238,10 @@ void Geomag_RunTests(const char *filename)
         p = sqrtf(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
         testp = sqrtf(NED.X * NED.X + NED.Y * NED.Y + NED.Z * NED.Z);
 
-        printf("test %d:\n", i++);
-        printf("  Input: Year=%.2f, Altitude=%.2f km, Latitude=%.2f deg, Longitude=%.2f deg\n",
-               year, altitude, latitude, longitude);
-        printf("  Expected NED Vector: { %.6f, %.6f, %.6f }\n", NED.X, NED.Y, NED.Z);
-        printf("  Expected ECI Vector: { %.6f, %.6f, %.6f }", ECI.X, ECI.Y, ECI.Z);
-        printf("  Expected Potential: %.6f\n", testp);
-        printf("  Computed Potential: %.6f\n", p);
+        testname[9] = (i / 10) + '0';
+        testname[10] = (i % 10) + '0';
 
-        delta = fabs(p - testp);
-        printf("  Difference: %.6f\n\n", delta);
+        Testing_TestVector(ECI, cart, vec, 1000, testname);
     }
 
     fclose(ptr);

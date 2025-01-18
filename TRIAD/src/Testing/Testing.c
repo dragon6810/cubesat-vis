@@ -15,22 +15,22 @@
 #define SBLD  "\033[1m"
 #define SNRM  "\033[0m"
 
-static int Testing_VectorCmp(Vec3D_t a, Vec3D_t b)
+static int Testing_VectorCmp(Vec3D_t a, Vec3D_t b, float epsilon)
 {
     int i;
 
     for(i=0; i<3; i++)
     {
-        if(fabsf(a.Vec[i] - b.Vec[i]) > 0.01)
+        if(fabsf(a.Vec[i] - b.Vec[i]) > epsilon)
             return false;
     }
 
     return true;
 }
 
-void Testing_TestVectorImpl(Vec3D_t expect, Vec3D_t in, Vec3D_t out, const char* test, const char* file, int line)
+void Testing_TestVectorImpl(Vec3D_t expect, Vec3D_t in, Vec3D_t out, float epsilon, const char* test, const char* file, int line)
 {
-    if(Testing_VectorCmp(out, expect))
+    if(Testing_VectorCmp(out, expect, epsilon))
         return;
 
     printf("\n%s================ TEST FAILURE ================\n\n", KYEL);

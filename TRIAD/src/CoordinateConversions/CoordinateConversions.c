@@ -79,14 +79,14 @@ static void Coord_TestNEDToECEF(void)
     phi = 0;
     expect.X = 500.0; expect.Y = 2000.0; expect.Z = 1000.0;
     Coord_NEDToECEF(&NED, &ECEF, theta, phi);
-    Testing_TestVector(expect, NED, ECEF, "Coord_NEDToECEF Nominal Test 1");
+    Testing_TestVector(expect, NED, ECEF, 0.01, "Coord_NEDToECEF Nominal Test 1");
 
     NED.X = 1000.0; NED.Y = 2000.0; NED.Z = -500;
     theta = 0;
     phi = 180;
     expect.X = -500.0; expect.Y = -2000.0; expect.Z = 1000.0;
     Coord_NEDToECEF(&NED, &ECEF, theta, phi);
-    Testing_TestVector(expect, NED, ECEF, "Coord_NEDToECEF Nominal Test 2");
+    Testing_TestVector(expect, NED, ECEF, 0.01, "Coord_NEDToECEF Nominal Test 2");
 }
 
 void Coord_TestConversions(void)
