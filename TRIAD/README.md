@@ -20,6 +20,9 @@
     cd ../TRIAD
     make
 
-replase 2.2.0_1 with whatever version you have, check with
+replace 2.2.0_1 with whatever version you have, check with
     brew info glew
 same goes for glfw
+
+You will also need to run the bash script to bake the data into a header file.
+    ./bakedata.sh

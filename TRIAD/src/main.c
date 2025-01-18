@@ -383,13 +383,11 @@ void drawmagfield(void)
         in[1] = d * r * sinf(theta);
         in[2] = d * y;
 
+        Coord_ECEFToECI(t, in, in);
+
         vin.X = in[0];
         vin.Y = in[1];
         vin.Z = in[2];
-
-        //vin.X = RAD2DEG(asinf(y));
-        //vin.Y = RAD2DEG(theta);
-        //vin.Z = d - 6371;
 
         assert(Geomag_GetMagEquatorial(&t, &vin, &vout) == FR_OK);
         out[0] = vout.X;
@@ -487,10 +485,14 @@ int main(int argc, char** argv)
     struct nk_font_atlas *atlas;
     struct nk_font *font;
 
-    printf("\n================================ TRIAD Testing ================================\n");
+    printf("\n================================ TRIAD Testing ================================\n\n");
+
+    printf("running tests...\n");
 
     Coord_TestConversions();
     Geomag_RunTests("WMM2025_TestValues.txt");
+
+    printf("all tests passed.\n\n");
 
     windowinginit();
     win = makewindow();

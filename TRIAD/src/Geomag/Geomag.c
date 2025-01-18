@@ -11,6 +11,8 @@
 #include <CoordinateConversions/CoordinateConversions.h>
 #include <Testing/Testing.h>
 
+#include <Geomag/Data.h>
+
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * INTERNAL DEFINES
@@ -55,57 +57,26 @@ static void Geomag_InitializeModel(Geomag_MagneticModel_t * MagneticModel) {
 
 static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *MagneticModel)
 {
-    // Type to read each line into
-    typedef struct {
-        int n, m;
-        float32_t gnm, hnm, dgnm, dhnm;
-    } WMM_Line;
+    int i;
 
-    FILE *ptr;
-
-    // Setup variable
+    
     Geomag_InitializeModel(MagneticModel);
-    WMM_Line line;
-    int index;
-    int count;
-    int bogus;
-
-    ptr = fopen(WMM_FILENAME, "r");
-    if(!ptr)
-    {
-        printf("can't open file \"%s\".\n", WMM_FILENAME);
-        return FR_NO_FILE;
-    }
-
-    fscanf(ptr, " %f WMM-%d %d/%d/%d\n", &MagneticModel->epoch, &bogus, &bogus, &bogus, &bogus);
-
-    MagneticModel->Main_Field_Coeff_H[0] = 0.0;
-    MagneticModel->Main_Field_Coeff_G[0] = 0.0;
-    MagneticModel->Secular_Var_Coeff_H[0] = 0.0;
-    MagneticModel->Secular_Var_Coeff_G[0] = 0.0;
-
-    count = 0;
-    while(fscanf(ptr, " %d %d %f %f %f %f", &line.n, &line.m, &line.gnm, &line.hnm, &line.dgnm, &line.dhnm) == 6)
-    {
-        count++;
-        assert(count < CALCULATE_NUMTERMS(MAX_N_MODE)+1);
-
-        MagneticModel->Main_Field_Coeff_G[count] = line.gnm;
-        MagneticModel->Main_Field_Coeff_H[count] = line.hnm;
-        MagneticModel->Secular_Var_Coeff_G[count] = line.dgnm;
-        MagneticModel->Secular_Var_Coeff_H[count] = line.dhnm;
-    }
-
-    fclose(ptr);
-
     MagneticModel->nMax = MAX_N_MODE;
     MagneticModel->nMaxSecVar = MAX_N_MODE;
+    for(i=0; i<CALCULATE_NUMTERMS(MAX_N_MODE)+1; i++)
+    {
+        MagneticModel->Main_Field_Coeff_G[i] = geomag_wmm_elements[i].coeffg;
+        MagneticModel->Main_Field_Coeff_H[i] = geomag_wmm_elements[i].coeffh;
+        MagneticModel->Secular_Var_Coeff_G[i] = geomag_wmm_elements[i].slopeg;
+        MagneticModel->Secular_Var_Coeff_H[i] = geomag_wmm_elements[i].slopeh;
+    }
 
     return FR_OK;
 }
 
 // sets up ellipsoid and geoid to earth's values
-static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid) {
+static void Geomag_SetDefaults(Geomag_Ellipsoid_t *Ellip, Geomag_Geoid_t *Geoid)
+{
     Ellip->a = 6378.137; /*semi-major axis of the ellipsoid in */
     Ellip->b = 6356.7523142; /*semi-minor axis of the ellipsoid in */
     
@@ -141,6 +112,7 @@ static void Geomag_ECEFToGeodetic(Geomag_Ellipsoid_t* Ellip, float32_t x, float3
     sx = x / Ellip->a;
     sy = y / Ellip->a;
     sz = z / Ellip->b;
+
     // < 1: inside ellipsoid, = 1: on surface of ellipsoid, >1: outside ellipsoid
     d = sx * sx + sy * sy + sz * sz;
 
@@ -184,23 +156,8 @@ void Geomag_RunTests(const char *filename)
 {
     int i;
 
-    FILE *ptr;
     float year, altitude, latitude, longitude, testp;
     time_t time;
-    float p;
-    float delta;
-
-    ptr = fopen(filename, "r");
-    if (!ptr)
-    {
-        printf("couldn't open test file \"%s\".\n", filename);
-        abort();
-    }
-
-    // skip the spec at the top by skipping 18 lines
-    char buffer[256];
-    for (i=0; i<18; ++i)
-        fgets(buffer, sizeof(buffer), ptr);
 
     Geomag_MagneticModel_t MagneticModel, TimedMagneticModel;
     Geomag_Ellipsoid_t Ellip;
@@ -217,9 +174,16 @@ void Geomag_RunTests(const char *filename)
     strcpy(testname, "WMM Test 00");
 
     i = 0;
-    while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %f %f %f %f %*f %*f %*f %*f %*f %*f %*f\n", 
-                  &year, &altitude, &latitude, &longitude, &NED.X, &NED.Y, &NED.Z, &testp) == 8) 
+    for(i=0; i<sizeof(geomag_wmm_test_elements) / sizeof(wmm_test_element_t); i++)
     {
+        year = geomag_wmm_test_elements[i].time;
+        altitude = geomag_wmm_test_elements[i].alt;
+        latitude = geomag_wmm_test_elements[i].lat;
+        longitude = geomag_wmm_test_elements[i].lon;
+        NED.Vec[0] = geomag_wmm_test_elements[i].x;
+        NED.Vec[1] = geomag_wmm_test_elements[i].y;
+        NED.Vec[2] = geomag_wmm_test_elements[i].z;
+
         time = (time_t)((year - 1970) * 365.25 * 24 * 3600);
 
         CoordSpherical.r = Ellip.re + altitude;
@@ -235,16 +199,13 @@ void Geomag_RunTests(const char *filename)
         cart.Z = CoordSpherical.r * sinf(CoordSpherical.phig);
 
         Geomag_GetMagEquatorial(&time, &cart, &vec);
-        p = sqrtf(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
-        testp = sqrtf(NED.X * NED.X + NED.Y * NED.Y + NED.Z * NED.Z);
 
+        assert(i < 100);
         testname[9] = (i / 10) + '0';
         testname[10] = (i % 10) + '0';
 
-        Testing_TestVector(ECI, cart, vec, 1000, testname);
+        Testing_TestVector(ECI, cart, vec, 512.0, testname);
     }
-
-    fclose(ptr);
 }
 
 /*
