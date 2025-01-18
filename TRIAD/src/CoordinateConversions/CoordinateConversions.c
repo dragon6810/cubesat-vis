@@ -81,10 +81,10 @@ static void Coord_TestNEDToECEF(void)
     Coord_NEDToECEF(&NED, &ECEF, theta, phi);
     Testing_TestVector(expect, NED, ECEF, "Coord_NEDToECEF Nominal Test 1");
 
-    NED.X = 1000.0; NED.Y = 1000.0; NED.Z = 500.0;
-    theta = M_PI_4;
-    phi = M_PI_4;
-    expect.X = -527.32; expect.Y = 992.87; expect.Z = 993.05;
+    NED.X = 1000.0; NED.Y = 2000.0; NED.Z = -500;
+    theta = 0;
+    phi = 180;
+    expect.X = -500.0; expect.Y = -2000.0; expect.Z = 1000.0;
     Coord_NEDToECEF(&NED, &ECEF, theta, phi);
     Testing_TestVector(expect, NED, ECEF, "Coord_NEDToECEF Nominal Test 2");
 }

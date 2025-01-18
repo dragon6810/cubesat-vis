@@ -185,7 +185,7 @@ void Geomag_RunTests(const char *filename)
     int i;
 
     FILE *ptr;
-    float year, altitude, latitude, longitude, testp, x, y, z;
+    float year, altitude, latitude, longitude, testp;
     time_t time;
     float p;
     float delta;
@@ -206,7 +206,7 @@ void Geomag_RunTests(const char *filename)
     Geomag_Ellipsoid_t Ellip;
     Geomag_CoordSpherical_t CoordSpherical;
     Geomag_Geoid_t Geoid;
-    Vec3D_t cart, vec;
+    Vec3D_t cart, vec, NED, ECEF, ECI;
 
     Geomag_InitializeModel(&MagneticModel);
     Geomag_ReadMagModel(WMM_FILENAME, &MagneticModel);
@@ -215,13 +215,17 @@ void Geomag_RunTests(const char *filename)
 
     i = 0;
     while (fscanf(ptr, "%f %f %f %f %*f %*f %*f %f %f %f %f %*f %*f %*f %*f %*f %*f %*f\n", 
-                  &year, &altitude, &latitude, &longitude, &x, &y, &z, &testp) == 8) 
+                  &year, &altitude, &latitude, &longitude, &NED.X, &NED.Y, &NED.Z, &testp) == 8) 
     {
         time = (time_t)((year - 1970) * 365.25 * 24 * 3600);
 
         CoordSpherical.r = Ellip.re + altitude;
         CoordSpherical.phig = DEG2RAD(latitude);
         CoordSpherical.lambda = DEG2RAD(longitude) + EARTH_ROT_SPEED * (time - EQUINOX_TIME); // relative to vernal equinox
+        CoordSpherical.lambda = DEG2RAD(longitude);
+
+        Coord_NEDToECEF(&NED, &ECEF, latitude, longitude);
+        Coord_ECEFToECI(time, &ECEF, &ECI);
 
         cart.X = CoordSpherical.r * cosf(CoordSpherical.lambda) * cosf(CoordSpherical.phig);
         cart.Y = CoordSpherical.r * sinf(CoordSpherical.lambda) * cosf(CoordSpherical.phig);
@@ -229,11 +233,13 @@ void Geomag_RunTests(const char *filename)
 
         Geomag_GetMagEquatorial(&time, &cart, &vec);
         p = sqrtf(vec.X * vec.X + vec.Y * vec.Y + vec.Z * vec.Z);
-        testp = sqrtf(x * x + y * y + z * z);
+        testp = sqrtf(NED.X * NED.X + NED.Y * NED.Y + NED.Z * NED.Z);
 
         printf("test %d:\n", i++);
         printf("  Input: Year=%.2f, Altitude=%.2f km, Latitude=%.2f deg, Longitude=%.2f deg\n",
                year, altitude, latitude, longitude);
+        printf("  Expected NED Vector: { %.6f, %.6f, %.6f }\n", NED.X, NED.Y, NED.Z);
+        printf("  Expected ECI Vector: { %.6f, %.6f, %.6f }", ECI.X, ECI.Y, ECI.Z);
         printf("  Expected Potential: %.6f\n", testp);
         printf("  Computed Potential: %.6f\n", p);
 
@@ -273,7 +279,7 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEq
     SatECEF = *SatECI;
 
     // theta is latitude, phi is longitude.
-    arm_atan2_f32(sqrtf(SatECEF.X*SatECEF.X + SatECEF.Y*SatECEF.Y), SatECEF.Z, &theta);
+    arm_atan2_f32(SatECEF.Z, sqrtf(SatECEF.X*SatECEF.X + SatECEF.Y*SatECEF.Y), &theta);
     arm_atan2_f32(SatECEF.Y, SatECEF.X, &phi);
     theta = RAD2DEG(theta);
     phi = RAD2DEG(phi);

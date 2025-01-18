@@ -108,6 +108,61 @@ int VectorCmp(vec3_t a, vec3_t b)
     return 0;
 }
 
+void drawline(vec3_t start, vec3_t end, vec3_t col)
+{
+    const float stroke = 16;
+
+    glLineWidth(stroke);
+    glColor3f(col[0], col[1], col[2]);
+    
+    glBegin(GL_LINES);
+    glVertex3f(start[0], start[1], start[2]);
+    glVertex3f(end[0], end[1], end[2]);
+    glEnd();
+    
+    glColor3f(1, 1, 1);
+    glLineWidth(1);
+}
+
+void drawring(vec3_t center, vec3_t a, vec3_t b, vec3_t col, float start, float end)
+{
+    const int segs = 64;
+    const float stroke = 16;
+
+    int i, j;
+
+    vec3_t cura, curb, p;
+    float theta;
+
+    glColor3f(col[0], col[1], col[2]);
+
+    glLineWidth(stroke);
+    glBegin(GL_LINES);
+
+    for(i=0; i<segs; i++)
+    {
+        for(j=0; j<2; j++)
+        {
+            theta = M_PI * 2.0 / (float) segs * (float) (i + j);
+            theta = theta * (end - start) / (M_PI * 2.0) + start;
+
+            VectorScale(cura, a, cosf(theta));
+            VectorScale(curb, b, sinf(theta));
+
+            VectorCopy(p, center);
+            VectorAdd(p, p, cura);
+            VectorAdd(p, p, curb);
+
+            glVertex3f(p[0], p[1], p[2]);
+        }
+    }
+
+    glEnd();
+    glLineWidth(1);
+
+    glColor3f(1, 1, 1);
+}
+
 void drawcyl(vec3_t start, vec3_t end, vec3_t col)
 {
     const int segs = 8;
@@ -351,6 +406,8 @@ void render(void)
 {
     vec3_t col;
     vec3_t end;
+    vec3_t ringa, ringb;
+    vec3_t lnstart, lnend;
 
     nk_glfw3_new_frame();
 
@@ -375,6 +432,38 @@ void render(void)
 
     drawball(vec3_origin, 6371, col);
 
+    // Equator
+
+    col[0] = 1.0;
+    col[1] = 0.0;
+    col[2] = 0.7;
+    VectorCopy(ringa, vec3_origin);
+    VectorCopy(ringb, vec3_origin);
+    ringa[0] = 6500;
+    ringb[1] = 6500;
+    drawring(vec3_origin, ringa, ringb, col, 0, M_PI * 2.0);
+
+    // Prime Meridian
+
+    col[0] = 0.1;
+    col[1] = 0.6;
+    col[2] = 0.2;
+    VectorCopy(ringa, vec3_origin);
+    VectorCopy(ringb, vec3_origin);
+    ringa[0] = 6500;
+    ringb[2] = 6500;
+    drawring(vec3_origin, ringa, ringb, col, -M_PI_2, M_PI_2);
+
+    // Earth's pole
+    col[0] = 0.2;
+    col[1] = 0.2;
+    col[2] = 1.0;
+    VectorCopy(lnstart, vec3_origin);
+    VectorCopy(lnend, vec3_origin);
+    lnstart[2] = -12000;
+    lnend[2] = 12000;
+    drawline(lnstart, lnend, col);
+
     if (nk_begin(nukcontext, "mag vis", nk_rect(50, 50, 200, 200),
                      NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE)) 
     {
@@ -396,6 +485,8 @@ int main(int argc, char** argv)
     Vec3D_t in, out, expect;
     struct nk_font_atlas *atlas;
     struct nk_font *font;
+
+    printf("\n================================ TRIAD Testing ================================\n");
 
     Coord_TestConversions();
     Geomag_RunTests("WMM2025_TestValues.txt");
