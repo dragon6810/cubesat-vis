@@ -452,6 +452,7 @@ void render(void)
     VectorCopy(ringb, vec3_origin);
     ringa[0] = 6500;
     ringb[2] = 6500;
+    Coord_ECEFToECI(time(NULL), ringa, ringa);
     drawring(vec3_origin, ringa, ringb, col, -M_PI_2, M_PI_2);
 
     // Earth's pole
