@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include <VecUtils.h>
 
@@ -11,7 +12,20 @@ typedef float vec3_t[3];
 
 vec3_t vec3_origin = {0, 0, 0};
 
+GLFWwindow *win;
+
 float sampleelevation = 0;
+
+float camtheta = 45, camphi = 45;
+const float camdistance = 32768;
+
+float lastmousex, lastmousey;
+float mousex, mousey;
+const float sensitivity = 128.0;
+bool mouseoverui;
+float windowaspect;
+
+int dontdrawmag = 1;
 
 void VectorCopy(vec3_t dest, vec3_t v)
 {
@@ -263,6 +277,8 @@ void drawcone(vec3_t pos, vec3_t dir, vec3_t col)
         VectorNormalize(n, n);
 
         mul = n[2];
+        if(mul < 0)
+            mul = 0;
         mul += ambient;
         glColor3f(col[0] * mul, col[1] * mul, col[2] * mul);
 
@@ -398,6 +414,28 @@ void drawmagfield(void)
     }
 }
 
+void updatecam(void)
+{
+    float deltax, deltay;
+
+    if(mouseoverui)
+        return;
+
+    if(glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_1) == GLFW_RELEASE)
+        return;
+
+    deltax = (mousex - lastmousex) * windowaspect;
+    deltay = mousey - lastmousey;
+
+    camtheta -= deltax * sensitivity;
+    camphi += deltay * sensitivity;
+
+    if(camphi > 89)
+        camphi = 89;
+    if(camphi < -89)
+        camphi = -89;
+}
+
 struct nk_context *nukcontext;
 
 void render(void)
@@ -406,6 +444,7 @@ void render(void)
     vec3_t end;
     vec3_t ringa, ringb;
     vec3_t lnstart, lnend;
+    vec3_t campos;
 
     nk_glfw3_new_frame();
 
@@ -414,12 +453,21 @@ void render(void)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(45, 16.0 / 9.0, 10, 100000);
+   
+    updatecam();
+
+    lastmousex = mousex;
+    lastmousey = mousey;
+
+    campos[0] = cosf(DEG2RAD(camtheta)) * cosf(DEG2RAD(camphi)) * camdistance;
+    campos[1] = sinf(DEG2RAD(camtheta)) * cosf(DEG2RAD(camphi)) * camdistance;
+    campos[2] = sinf(DEG2RAD(camphi)) * camdistance;
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
     gluLookAt
     (
-        16384, 16384, 16384,
+        campos[0], campos[1], campos[2],
         0, 0, 0,
         0, 0, 1
     );
@@ -463,29 +511,62 @@ void render(void)
     lnend[2] = 12000;
     drawline(lnstart, lnend, col);
 
-    if (nk_begin(nukcontext, "mag vis", nk_rect(50, 50, 200, 200),
-                     NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_SCALABLE)) 
+    // X Axis (ECI)
+    col[0] = 1.0;
+    col[1] = 0.0;
+    col[2] = 0.0;
+    VectorCopy(lnstart, vec3_origin);
+    VectorCopy(lnend, vec3_origin);
+    lnend[0] = 12000;
+    drawline(lnstart, lnend, col);
+
+    // Y Axis (ECI)
+    col[0] = 0.0;
+    col[1] = 1.0;
+    col[2] = 0.0;
+    VectorCopy(lnstart, vec3_origin);
+    VectorCopy(lnend, vec3_origin);
+    lnend[1] = 12000;
+    drawline(lnstart, lnend, col);
+
+    if(!dontdrawmag)
+        drawmagfield();
+
+    if (nk_begin(nukcontext, "mag vis", nk_rect(32, 32, 280, 300),
+                     NK_WINDOW_BORDER)) 
     {
         nk_layout_row_static(nukcontext, 30, 256, 1);
         
-        nk_label(nukcontext, "sample altitude in km:", NK_TEXT_LEFT);
+        nk_label(nukcontext, "magnetic field altitude in km:", NK_TEXT_LEFT);
         nk_slider_float(nukcontext, 0, &sampleelevation, 8192, 16);
+
+        nk_checkbox_label(nukcontext, "draw magnetic field", &dontdrawmag);
+
+        mouseoverui = nk_window_is_hovered(nukcontext) || nk_item_is_any_active(nukcontext);
     }
     nk_end(nukcontext);
 
-    nk_glfw3_render(NK_ANTI_ALIASING_ON);
+    nk_glfw3_render(NK_ANTI_ALIASING_OFF);
+}
 
-    drawmagfield();    
+static void cursorposcallback(GLFWwindow* win, double x, double y)
+{
+    int w, h;
+
+    glfwGetWindowSize(win, &w, &h);
+
+    mousex = x / (float) w;
+    mousey = y / (float) h;
 }
 
 int main(int argc, char** argv)
 {
-    GLFWwindow *win;
+    int w, h;
     Vec3D_t in, out, expect;
     struct nk_font_atlas *atlas;
     struct nk_font *font;
 
-    printf("\n================================ TRIAD Testing ================================\n\n");
+    printf("\n================================ TRIAD Visualization/Testing ================================\n\n");
 
     printf("running tests...\n");
 
@@ -496,6 +577,11 @@ int main(int argc, char** argv)
 
     windowinginit();
     win = makewindow();
+
+    glfwGetWindowSize(win, &w, &h);
+    windowaspect = (float) w / (float) h;
+
+    glfwSetCursorPosCallback(win, cursorposcallback);
 
     nukcontext = nk_glfw3_init(win, NK_GLFW3_INSTALL_CALLBACKS);
     nk_glfw3_font_stash_begin(&atlas);

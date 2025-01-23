@@ -2,7 +2,6 @@
 #define _geomag_data_h
 
 #include <Geomag/GeomagLib.h>
-#include <User_types.h>
 
 typedef struct wmm_element_s
 {

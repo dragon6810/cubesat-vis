@@ -9,6 +9,7 @@ GLFWwindow* makewindow(void)
     GLFWwindow *win;
     GLenum err;
 
+    glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
     assert(win = glfwCreateWindow(1280, 720, "TRIAD Vis", NULL, NULL));
 
     glfwMakeContextCurrent(win);

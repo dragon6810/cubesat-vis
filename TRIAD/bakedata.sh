@@ -3,7 +3,7 @@
 # bash isn't the right tool for this, maybe make a python script later
 
 DATA_FILE=$'src/Geomag/Data.h'
-DATA_HEADER=$'#ifndef _geomag_data_h\n#define _geomag_data_h\n\n#include <Geomag/GeomagLib.h>\n#include <User_types.h>\n'
+DATA_HEADER=$'#ifndef _geomag_data_h\n#define _geomag_data_h\n\n#include <Geomag/GeomagLib.h>\n'
 DATA_FOOTER=$'#endif'
 
 WMM_STRUCT=$'typedef struct wmm_element_s\n{\n    double coeffg;\n    double coeffh;\n    double slopeg;\n    double slopeh;\n} wmm_element_t;\n'
