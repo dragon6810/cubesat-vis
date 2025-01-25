@@ -1,12 +1,15 @@
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <stdbool.h>
 
 #include <VecUtils.h>
+#include <arm_math.h>
 
 #include <Geomag/Geomag.h>
 #include <window/window.h>
 #include <CoordinateConversions/CoordinateConversions.h>
+#include <TRIAD/TRIAD.h>
 
 typedef float vec3_t[3];
 
@@ -15,9 +18,17 @@ vec3_t vec3_origin = {0, 0, 0};
 GLFWwindow *win;
 
 float sampleelevation = 0;
+float satelevation = 1024;
+vec3_t satpos = {0, 0, 0};
+arm_matrix_instance_f32 satrotmat;
+arm_matrix_instance_f32 sattriadmat;
+float satrotmatdata[9] = {};
+float sattriadmatdata[9] = {};
+vec3_t sundir = { 1.0, 0.0, 0.0 };
 
 float camtheta = 45, camphi = 45;
 const float camdistance = 32768;
+const float vfov = 45;
 
 float lastmousex, lastmousey;
 float mousex, mousey;
@@ -122,6 +133,23 @@ int VectorCmp(vec3_t a, vec3_t b)
     return 0;
 }
 
+void QuaternionRandom(float32_t* q)
+{
+    int i;
+
+    float u[3];
+
+    assert(q);
+
+    for(i=0; i<3; i++)
+        u[i] = (float) rand() / (float) RAND_MAX;
+
+    q[0] = sqrtf(1.0 - u[0]) * sinf(2.0 * M_PI * u[1]);
+    q[1] = sqrtf(1.0 - u[0]) * cosf(2.0 * M_PI * u[1]);
+    q[2] = sqrtf(u[0])       * sinf(2.0 * M_PI * u[2]);
+    q[3] = sqrtf(u[0])       * cosf(2.0 * M_PI * u[2]);
+}
+
 void drawline(vec3_t start, vec3_t end, vec3_t col)
 {
     const float stroke = 16;
@@ -219,6 +247,8 @@ void drawcyl(vec3_t start, vec3_t end, vec3_t col)
             VectorScale(vy, up, sinf(theta));
             VectorAdd(n, vx, vy);
             mul = n[2];
+            if(mul < 0)
+                mul = 0;
             mul += ambient;
             glColor3f(col[0] * mul, col[1] * mul, col[2] * mul);
 
@@ -371,6 +401,21 @@ void drawmagentry(vec3_t entry, vec3_t pos)
     drawarrow(start, end, col); 
 }
 
+void getmagatsat(vec3_t mag)
+{
+    time_t t;
+    Vec3D_t vin, vout;
+
+    assert(mag);
+
+    memcpy(&vin, satpos, sizeof(vec3_t));
+
+    time(&t);
+    assert(Geomag_GetMagEquatorial(&t, &vin, &vout) == FR_OK);
+
+    memcpy(mag, &vout, sizeof(vec3_t));
+}
+
 // Generates and draws samples in fibonacci sphere around origin with distance d
 void drawmagfield(void)
 {
@@ -387,7 +432,11 @@ void drawmagfield(void)
     float theta;
     float y, r;
 
+    if(dontdrawmag)
+        return;
+
     time(&t);
+
     for(i=0; i<nsamples; i++)
     {
         y = 1.0 - ((float) i / (float) (nsamples - 1)) * 2;
@@ -412,6 +461,68 @@ void drawmagfield(void)
 
         drawmagentry(out, in);
     }
+}
+
+void randsatrot(void)
+{
+    float32_t q[4];
+
+    QuaternionRandom(q);
+    arm_quaternion2rotation_f32(q, satrotmat.pData, 1);
+}
+
+void placesat(void)
+{
+    vec3_t campos, forward, up, right;
+    int w, h;
+    double x, y;
+    float planew2, planeh2;
+    vec3_t dir;
+    float t, b, c;
+
+    if(mouseoverui)
+        return;
+
+    if(glfwGetMouseButton(win, GLFW_MOUSE_BUTTON_2) == GLFW_RELEASE)
+        return;
+
+    campos[0] = cosf(DEG2RAD(camtheta)) * cosf(DEG2RAD(camphi)) * camdistance;
+    campos[1] = sinf(DEG2RAD(camtheta)) * cosf(DEG2RAD(camphi)) * camdistance;
+    campos[2] = sinf(DEG2RAD(camphi)) * camdistance;
+    VectorScale(forward, campos, -1);
+    VectorNormalize(forward, forward);
+
+    VectorCopy(up, vec3_origin);
+    up[2] = 1.0;
+    VectorCross(right, forward, up);
+    VectorNormalize(right, right);
+    VectorCross(up, right, forward);
+    
+    planeh2 = tanf(DEG2RAD(vfov / 2));
+    planew2 = planeh2 * windowaspect;
+
+    glfwGetCursorPos(win, &x, &y);
+    glfwGetWindowSize(win, &w, &h);
+    x /= w;
+    y /= h;
+    
+    VectorCopy(dir, vec3_origin);
+    VectorAdd(dir, forward, dir);
+    VectorScale(up, up, planeh2 * ((1.0 - (float) y) * 2.0 - 1.0));
+    VectorAdd(dir, up, dir);
+    VectorScale(right, right, planew2 * ((float) x * 2.0 - 1.0));
+    VectorAdd(dir, right, dir);
+    VectorNormalize(dir, dir);
+
+    // Now intersect with sat sphere
+
+    b = VectorDot(campos, dir);
+    c = VectorDot(campos, campos) - (6371 + satelevation) * (6371 + satelevation);
+    t = -b - sqrtf(b * b - c);
+    if(b * b - c < 0)
+        return;
+    VectorScale(satpos, dir, t);
+    VectorAdd(satpos, campos, satpos);
 }
 
 void updatecam(void)
@@ -440,10 +551,13 @@ struct nk_context *nukcontext;
 
 void render(void)
 {
+    int i;
+
     vec3_t col;
     vec3_t end;
     vec3_t ringa, ringb;
     vec3_t lnstart, lnend;
+    vec3_t magv, sunv, satmagv, satsunv;
     vec3_t campos;
 
     nk_glfw3_new_frame();
@@ -452,9 +566,10 @@ void render(void)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(45, 16.0 / 9.0, 10, 100000);
+    gluPerspective(vfov, 16.0 / 9.0, 10, 100000);
    
     updatecam();
+    placesat();
 
     lastmousex = mousex;
     lastmousey = mousey;
@@ -472,14 +587,63 @@ void render(void)
         0, 0, 1
     );
 
+    // Earth
     col[0] = 0.5;
     col[1] = 0.7;
     col[2] = 1.0;
-
     drawball(vec3_origin, 6371, col);
 
-    // Equator
+    // Sat
+    col[0] = 0.9;
+    col[1] = 0.3;
+    col[2] = 0.4;
+    drawball(satpos, 256, col);
 
+    getmagatsat(magv);
+    VectorNormalize(magv, magv);
+    VectorCopy(sunv, sundir);
+    
+    VectorCopy(satmagv, magv);
+    VectorCopy(satsunv, sunv);
+    arm_mat_vec_mult_f32(&satrotmat, magv, NULL);
+    arm_mat_vec_mult_f32(&satrotmat, sunv, NULL);
+
+    TRIAD_Compute(magv, sunv, satmagv, satsunv, &sattriadmat);
+
+    // Sat Basis Vectors
+    for(i=0; i<3; i++)
+    {
+        VectorCopy(col, vec3_origin);
+        col[i] = 1.0;
+        VectorCopy(lnstart, vec3_origin);
+        VectorCopy(lnend, vec3_origin);
+        lnend[i] = 1024;
+        arm_mat_vec_mult_f32(&sattriadmat, lnend, NULL);
+        VectorAdd(lnstart, satpos, lnstart);
+        VectorAdd(lnend, satpos, lnend);
+        drawarrow(lnstart, lnend, col);
+    }
+
+    // Sat Mag Vector
+    col[0] = 1;
+    col[1] = 0.5;
+    col[2] = 0;
+    VectorScale(end, satmagv, 1024);
+    VectorCopy(lnstart, satpos);
+    VectorAdd(lnend, satpos, end);
+    drawarrow(lnstart, lnend, col);
+
+    // Sat Sun Vector
+    VectorCopy(col, vec3_origin);
+    col[0] = 1.0;
+    col[1] = 1.0;
+    col[2] = 1.0;
+    VectorCopy(lnstart, satpos);
+    VectorScale(lnend, satsunv, 1024);
+    VectorAdd(lnend, satpos, lnend);
+    drawarrow(lnstart, lnend, col);
+    
+    // Equator
     col[0] = 1.0;
     col[1] = 0.0;
     col[2] = 0.7;
@@ -490,7 +654,6 @@ void render(void)
     drawring(vec3_origin, ringa, ringb, col, 0, M_PI * 2.0);
 
     // Prime Meridian
-
     col[0] = 0.1;
     col[1] = 0.6;
     col[2] = 0.2;
@@ -529,8 +692,7 @@ void render(void)
     lnend[1] = 12000;
     drawline(lnstart, lnend, col);
 
-    if(!dontdrawmag)
-        drawmagfield();
+    drawmagfield();
 
     if (nk_begin(nukcontext, "mag vis", nk_rect(32, 32, 280, 300),
                      NK_WINDOW_BORDER)) 
@@ -559,12 +721,20 @@ static void cursorposcallback(GLFWwindow* win, double x, double y)
     mousey = y / (float) h;
 }
 
+void keycallback(GLFWwindow* win, int key, int scancode, int act, int mod)
+{
+    if(key == GLFW_KEY_R && (act == GLFW_PRESS || act == GLFW_REPEAT))
+        randsatrot();
+}
+
 int main(int argc, char** argv)
 {
     int w, h;
     Vec3D_t in, out, expect;
     struct nk_font_atlas *atlas;
     struct nk_font *font;
+
+    srand((unsigned int)time(NULL));
 
     printf("\n================================ TRIAD Visualization/Testing ================================\n\n");
 
@@ -582,6 +752,11 @@ int main(int argc, char** argv)
     windowaspect = (float) w / (float) h;
 
     glfwSetCursorPosCallback(win, cursorposcallback);
+    glfwSetKeyCallback(win, keycallback);
+
+    arm_mat_init_f32(&satrotmat, 3, 3, satrotmatdata);
+    arm_mat_init_f32(&sattriadmat, 3, 3, sattriadmatdata);
+    randsatrot();
 
     nukcontext = nk_glfw3_init(win, NK_GLFW3_INSTALL_CALLBACKS);
     nk_glfw3_font_stash_begin(&atlas);

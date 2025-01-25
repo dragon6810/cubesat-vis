@@ -8,6 +8,7 @@
         "nuklear_glfw_gl2.h": "c",
         "coordinateconversions.h": "c",
         "stdbool.h": "c",
-        "testing.h": "c"
+        "testing.h": "c",
+        "stdlib.h": "c"
     }
 }

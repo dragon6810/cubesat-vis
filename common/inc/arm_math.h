@@ -11,9 +11,9 @@
 //#include <CMSIS-DSP Include/dsp/fast_math_functions.h>
 //#include <CMSIS-DSP Include/dsp/filtering_functions.h>
 //#include <CMSIS-DSP Include/dsp/interpolation_functions.h>
-//#include <CMSIS-DSP Include/dsp/matrix_functions.h>
+#include <CMSIS-DSP Include/dsp/matrix_functions.h>
 //#include <CMSIS-DSP Include/dsp/none.h>
-//#include <CMSIS-DSP Include/dsp/quaternion_math_functions.h>
+#include <CMSIS-DSP Include/dsp/quaternion_math_functions.h>
 //#include <CMSIS-DSP Include/dsp/statistics_functions.h>
 //#include <CMSIS-DSP Include/dsp/support_functions.h>
 //#include <CMSIS-DSP Include/dsp/svm_functions.h>
