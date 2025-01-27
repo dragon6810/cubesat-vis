@@ -574,6 +574,8 @@ void render(void)
 {
     int i;
 
+    const float radpersecond = M_PI * 2.0 * 0.5;
+
     vec3_t col;
     vec3_t end;
     vec3_t ringa, ringb;
@@ -583,6 +585,7 @@ void render(void)
     float satrotvelq[4];
     arm_matrix_instance_f32 satrotvelm;
     arm_matrix_instance_f32 satrotm;
+    vec3_t satomega;
     float satrotvelmdata[9] = {};
     float satrotmdata[9] = {};
     struct timespec ts;
@@ -632,8 +635,7 @@ void render(void)
     arm_mat_init_f32(&satrotm, 3, 3, satrotmdata);
     clock_gettime(CLOCK_MONOTONIC, &ts);
     seconds = (float) (ts.tv_sec - startts.tv_sec) + (float) (ts.tv_nsec - startts.tv_nsec) / 1000000000.0;
-    theta = seconds * M_PI * 2.0 * 0.5;
-    printf("seconds: %f.\n", seconds);
+    theta = seconds * radpersecond;
     satrotvelq[0] = cosf(theta / 2.0);
     satrotvelq[1] = satrotvelaxis.Vec[0] * sinf(theta / 2.0);
     satrotvelq[2] = satrotvelaxis.Vec[1] * sinf(theta / 2.0);
@@ -647,8 +649,8 @@ void render(void)
     
     VectorCopy(satmagv, magv);
     VectorCopy(satsunv, sunv);
-    arm_mat_vec_mult_f32(&satrotm, magv, NULL);
-    arm_mat_vec_mult_f32(&satrotm, sunv, NULL);
+    arm_mat_vec_mult_f32(&satrotm, satmagv, NULL);
+    arm_mat_vec_mult_f32(&satrotm, satsunv, NULL);
 
     TRIAD_Compute(magv, sunv, satmagv, satsunv, &sattriadmat);
 
@@ -660,17 +662,36 @@ void render(void)
         VectorCopy(lnstart, vec3_origin);
         VectorCopy(lnend, vec3_origin);
         lnend[i] = 1024;
+        arm_mat_vec_mult_f32(&sattriadmat, lnend, NULL);
+        VectorAdd(lnstart, satpos, lnstart);
+        VectorAdd(lnend, satpos, lnend);
+        drawarrow(lnstart, lnend, col);
+
+        col[0] = col[1] = col[2] = 0.5;
+        col[i] = 1.0;
+        VectorCopy(lnstart, vec3_origin);
+        VectorCopy(lnend, vec3_origin);
+        lnend[i] = 1024;
         arm_mat_vec_mult_f32(&satrotm, lnend, NULL);
         VectorAdd(lnstart, satpos, lnstart);
         VectorAdd(lnend, satpos, lnend);
         drawarrow(lnstart, lnend, col);
     }
 
+    // Sat Omega Vector
+    col[0] = 0.3;
+    col[1] = 0.1;
+    col[2] = 0.7;
+    VectorScale(satomega, satrotvelaxis.Vec, radpersecond * 512.0);
+    VectorCopy(lnstart, satpos);
+    VectorAdd(lnend, satomega, lnstart);
+    drawarrow(lnstart, lnend, col);
+
     // Sat Mag Vector
     col[0] = 1;
     col[1] = 0.5;
     col[2] = 0;
-    VectorScale(end, satmagv, 1024);
+    VectorScale(end, magv, 1024);
     VectorCopy(lnstart, satpos);
     VectorAdd(lnend, satpos, end);
     drawarrow(lnstart, lnend, col);
@@ -681,7 +702,7 @@ void render(void)
     col[1] = 1.0;
     col[2] = 1.0;
     VectorCopy(lnstart, satpos);
-    VectorScale(lnend, satsunv, 1024);
+    VectorScale(lnend, sunv, 1024);
     VectorAdd(lnend, satpos, lnend);
     drawarrow(lnstart, lnend, col);
     
