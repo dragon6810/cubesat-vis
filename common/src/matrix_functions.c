@@ -58,7 +58,7 @@ arm_status arm_mat_mult_f32(
         }
     }
 
-#if 1
+#if 0
     printf("\n");
     printf("[ %f %f %f ]   [ %f %f %f ]   [ %f %f %f ]\n", 
         pSrcA->pData[0], pSrcA->pData[1], pSrcA->pData[2], 

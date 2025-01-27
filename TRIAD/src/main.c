@@ -17,11 +17,14 @@ vec3_t vec3_origin = {0, 0, 0};
 
 GLFWwindow *win;
 
+struct timespec startts;
+
 float sampleelevation = 0;
 float satelevation = 1024;
 vec3_t satpos = {0, 0, 0};
 arm_matrix_instance_f32 satrotmat;
 arm_matrix_instance_f32 sattriadmat;
+Vec3D_t satrotvelaxis;
 float satrotmatdata[9] = {};
 float sattriadmatdata[9] = {};
 vec3_t sundir = { 1.0, 0.0, 0.0 };
@@ -131,6 +134,23 @@ int VectorCmp(vec3_t a, vec3_t b)
     }
 
     return 0;
+}
+
+void VectorRandom(Vec3D_t* v)
+{
+    int i;
+
+    float len;
+
+    do
+    {
+        for(i=0; i<3; i++)
+            v->Vec[i] = (float) rand() / (float) RAND_MAX;
+    } while((len = v->X * v->X + v->Y * v->Y + v->Z * v->Z) > 1);
+
+    len = sqrtf(len);
+    for(i=0; i<3; i++)
+        v->Vec[i] /= len;
 }
 
 void QuaternionRandom(float32_t* q)
@@ -469,6 +489,7 @@ void randsatrot(void)
 
     QuaternionRandom(q);
     arm_quaternion2rotation_f32(q, satrotmat.pData, 1);
+    VectorRandom(&satrotvelaxis);
 }
 
 void placesat(void)
@@ -559,6 +580,14 @@ void render(void)
     vec3_t lnstart, lnend;
     vec3_t magv, sunv, satmagv, satsunv;
     vec3_t campos;
+    float satrotvelq[4];
+    arm_matrix_instance_f32 satrotvelm;
+    arm_matrix_instance_f32 satrotm;
+    float satrotvelmdata[9] = {};
+    float satrotmdata[9] = {};
+    struct timespec ts;
+    float seconds;
+    float theta;
 
     nk_glfw3_new_frame();
 
@@ -599,14 +628,27 @@ void render(void)
     col[2] = 0.4;
     drawball(satpos, 256, col);
 
+    arm_mat_init_f32(&satrotvelm, 3, 3, satrotvelmdata);
+    arm_mat_init_f32(&satrotm, 3, 3, satrotmdata);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    seconds = (float) (ts.tv_sec - startts.tv_sec) + (float) (ts.tv_nsec - startts.tv_nsec) / 1000000000.0;
+    theta = seconds * M_PI * 2.0 * 0.5;
+    printf("seconds: %f.\n", seconds);
+    satrotvelq[0] = cosf(theta / 2.0);
+    satrotvelq[1] = satrotvelaxis.Vec[0] * sinf(theta / 2.0);
+    satrotvelq[2] = satrotvelaxis.Vec[1] * sinf(theta / 2.0);
+    satrotvelq[3] = satrotvelaxis.Vec[2] * sinf(theta / 2.0);
+    arm_quaternion2rotation_f32(satrotvelq, satrotvelmdata, 1);
+    arm_mat_mult_f32(&satrotvelm, &satrotmat, &satrotm);
+
     getmagatsat(magv);
     VectorNormalize(magv, magv);
     VectorCopy(sunv, sundir);
     
     VectorCopy(satmagv, magv);
     VectorCopy(satsunv, sunv);
-    arm_mat_vec_mult_f32(&satrotmat, magv, NULL);
-    arm_mat_vec_mult_f32(&satrotmat, sunv, NULL);
+    arm_mat_vec_mult_f32(&satrotm, magv, NULL);
+    arm_mat_vec_mult_f32(&satrotm, sunv, NULL);
 
     TRIAD_Compute(magv, sunv, satmagv, satsunv, &sattriadmat);
 
@@ -618,7 +660,7 @@ void render(void)
         VectorCopy(lnstart, vec3_origin);
         VectorCopy(lnend, vec3_origin);
         lnend[i] = 1024;
-        arm_mat_vec_mult_f32(&sattriadmat, lnend, NULL);
+        arm_mat_vec_mult_f32(&satrotm, lnend, NULL);
         VectorAdd(lnstart, satpos, lnstart);
         VectorAdd(lnend, satpos, lnend);
         drawarrow(lnstart, lnend, col);
@@ -735,6 +777,7 @@ int main(int argc, char** argv)
     struct nk_font *font;
 
     srand((unsigned int)time(NULL));
+    clock_gettime(CLOCK_MONOTONIC, &startts);
 
     printf("\n================================ TRIAD Visualization/Testing ================================\n\n");
 
@@ -756,6 +799,7 @@ int main(int argc, char** argv)
 
     arm_mat_init_f32(&satrotmat, 3, 3, satrotmatdata);
     arm_mat_init_f32(&sattriadmat, 3, 3, sattriadmatdata);
+
     randsatrot();
 
     nukcontext = nk_glfw3_init(win, NK_GLFW3_INSTALL_CALLBACKS);
