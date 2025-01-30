@@ -819,12 +819,17 @@ int main(int argc, char** argv)
 
     printf("\n================================ TRIAD Visualization/Testing ================================\n\n");
 
+#ifndef NDEBUG
+
     printf("running tests...\n");
 
     Coord_TestConversions();
     Geomag_RunTests("WMM2025_TestValues.txt");
+    TRIAD_RunTests();
 
     printf("all tests passed.\n\n");
+
+#endif
 
     windowinginit();
     win = makewindow();

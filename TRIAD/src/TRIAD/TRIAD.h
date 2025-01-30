@@ -56,4 +56,10 @@ int TRIAD_Compute(Vec3D_t* r1, Vec3D_t* r2, Vec3D_t* R1, Vec3D_t* R2, arm_matrix
 
 int TRIAD_CalculateOmega(arm_matrix_instance_f32* atta, arm_matrix_instance_f32* attb, float interval, Vec3D_t* omega);
 
+#ifndef NDEBUG
+
+void TRIAD_RunTests(void);
+
+#endif
+
 #endif

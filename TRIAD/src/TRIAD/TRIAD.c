@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include <Testing/Testing.h>
+
 static void TRIAD_MatTrans3x3(arm_matrix_instance_f32* mat)
 {
     int i, j;
@@ -129,3 +131,61 @@ int TRIAD_CalculateOmega(arm_matrix_instance_f32* atta, arm_matrix_instance_f32*
 
     return 1;
 }
+
+#ifndef NDEBUG
+
+static void TRIAD_TestMatrices(arm_matrix_instance_f32* a, arm_matrix_instance_f32* b)
+{
+    int i;
+
+    assert(a->numCols == b->numCols);
+    assert(a->numRows == b->numRows);
+    assert(a->pData);
+    assert(b->pData);
+
+    for(i=0; i<a->numCols*a->numRows; i++)
+        assert(fabsf(a->pData[i] - b->pData[i]) < 0.1);
+}
+
+void TRIAD_RunTests(void)
+{
+    Vec3D_t r1, r2, R1, R2;
+    arm_matrix_instance_f32 atta, attb;
+    arm_matrix_instance_f32 targetmat;
+    float attadata[3 * 3], attbdata[3 * 3];
+    float targetmatdata[3 * 3];
+    Vec3D_t empty;
+    Vec3D_t omega;
+    Vec3D_t targetvec;
+
+    arm_mat_init_f32(&atta, 3, 3, attadata);
+    arm_mat_init_f32(&attb, 3, 3, attbdata);
+    arm_mat_init_f32(&targetmat, 3, 3, targetmatdata);
+
+    r1.X = 1; r1.Y = 0; r1.Z = 0;
+    r2.X = 0; r2.Y = 1; r2.Z = 0;
+    R1.X = 0; R1.Y = 0; R1.Z = 1;
+    R2.X = 0; R2.Y = 1; R2.Z = 0;
+    targetmat.pData[0] =  0; targetmat.pData[1] =  0; targetmat.pData[2] = -1;
+    targetmat.pData[3] =  0; targetmat.pData[4] =  1; targetmat.pData[5] =  0;
+    targetmat.pData[6] =  1; targetmat.pData[7] =  0; targetmat.pData[8] =  0;
+    TRIAD_Compute(&r1, &r2, &R1, &R2, &atta);
+    TRIAD_TestMatrices(&atta, &targetmat);
+
+    r1.X = 1; r1.Y = 0; r1.Z = 0;
+    r2.X = 0; r2.Y = 1; r2.Z = 0;
+    R1.X = 1; R1.Y = 0; R1.Z = 0;
+    R2.X = 0; R2.Y = 1; R2.Z = 0;
+    targetmat.pData[0] =  1; targetmat.pData[1] =  0; targetmat.pData[2] =  0;
+    targetmat.pData[3] =  0; targetmat.pData[4] =  1; targetmat.pData[5] =  0;
+    targetmat.pData[6] =  0; targetmat.pData[7] =  0; targetmat.pData[8] =  1;
+    TRIAD_Compute(&r1, &r2, &R1, &R2, &attb);
+    TRIAD_TestMatrices(&attb, &targetmat);
+
+    memset(&empty, 0, sizeof(empty));
+    targetvec.X = 0; targetvec.Y = -1; targetvec.Z = 0;
+    TRIAD_CalculateOmega(&attb, &atta, 1.0, &omega);
+    Testing_TestVector(targetvec, empty, omega, 0.1, "TRIAD omega vector nominal test 0");
+}
+
+#endif
