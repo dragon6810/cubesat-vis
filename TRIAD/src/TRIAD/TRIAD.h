@@ -16,6 +16,8 @@
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
 
+#include <time.h>
+
 #include <User_types.h>
 #include <arm_math.h>
 
@@ -39,5 +41,19 @@
 */
 
 int TRIAD_Compute(Vec3D_t* r1, Vec3D_t* r2, Vec3D_t* R1, Vec3D_t* R2, arm_matrix_instance_f32* mat);
+
+/*!
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* @brief Computes omega vector given two matrices and a time interval between them
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* @param[input]         atta - The first, earlier attitude matrix
+* @param[input]         attb - The second, later attitude matrix
+* @param[input]         interval - The time interval between when atta and attb were computed, in seconds
+* @param[output]        omega - The computed omega vector
+* @return               did complete successfully? 0 - failed 1 - success
+*~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+int TRIAD_CalculateOmega(arm_matrix_instance_f32* atta, arm_matrix_instance_f32* attb, float interval, Vec3D_t* omega);
 
 #endif

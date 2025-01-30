@@ -4,6 +4,38 @@
 #include <assert.h>
 #include <stdlib.h>
 
+arm_status arm_mat_sub_f32(
+  const arm_matrix_instance_f32 * pSrcA,
+  const arm_matrix_instance_f32 * pSrcB,
+        arm_matrix_instance_f32 * pDst)
+{
+    int i;
+
+    assert(pSrcA);
+    assert(pSrcB);
+    assert(pDst);
+    assert(pSrcA->pData);
+    assert(pSrcB->pData);
+    assert(pDst->pData);
+
+    if(pSrcA->numCols != pSrcB->numCols)
+        return ARM_MATH_SIZE_MISMATCH;
+
+    if(pSrcA->numRows != pSrcB->numRows)
+        return ARM_MATH_SIZE_MISMATCH;
+
+    if(pSrcA->numCols != pDst->numCols)
+        return ARM_MATH_SIZE_MISMATCH;
+
+    if(pSrcA->numRows != pDst->numRows)
+        return ARM_MATH_SIZE_MISMATCH;
+
+    for(i=0; i<pSrcA->numCols*pSrcA->numRows; i++)
+        pDst->pData[i] = pSrcA->pData[i] - pSrcB->pData[i];
+
+    return ARM_MATH_SUCCESS;
+}
+
 void arm_mat_init_f32(
         arm_matrix_instance_f32 * S,
         uint16_t nRows,
@@ -73,6 +105,29 @@ arm_status arm_mat_mult_f32(
         pSrcB->pData[6], pSrcB->pData[7], pSrcB->pData[8],
          pDst->pData[6],  pDst->pData[7],  pDst->pData[8]);
 #endif
+
+    return ARM_MATH_SUCCESS;
+}
+
+arm_status arm_mat_scale_f32(
+  const arm_matrix_instance_f32 * pSrc,
+        float32_t scale,
+        arm_matrix_instance_f32 * pDst)
+{
+    int i;
+
+    assert(pSrc);
+    assert(pDst);
+    assert(pSrc->pData);
+    assert(pDst->pData);
+
+    if(pSrc->numCols != pDst->numCols)
+        return ARM_MATH_SIZE_MISMATCH;
+    if(pSrc->numRows != pDst->numRows)
+        return ARM_MATH_SIZE_MISMATCH;
+
+    for(i=0; i<pSrc->numCols*pSrc->numRows; i++)
+        pDst->pData[i] = pSrc->pData[i] * scale;
 
     return ARM_MATH_SUCCESS;
 }

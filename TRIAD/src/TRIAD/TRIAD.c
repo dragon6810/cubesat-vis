@@ -4,6 +4,25 @@
 #include <assert.h>
 #include <stdlib.h>
 
+static void TRIAD_MatTrans3x3(arm_matrix_instance_f32* mat)
+{
+    int i, j;
+
+    float old[9];
+
+    assert(mat->numCols == 3);
+    assert(mat->numRows == 3);
+    assert(mat->pData);
+
+    memcpy(old, mat->pData, 9 * sizeof(float));
+
+    for(i=0; i<3; i++)
+    {
+        for(j=0; j<3; j++)
+            mat->pData[i * 3 +j] = old[j * 3 + i];
+    }
+}
+
 static Vec3D_t TRIAD_CrossVec3(Vec3D_t a, Vec3D_t b)
 {
     Vec3D_t v;
@@ -69,6 +88,44 @@ int TRIAD_Compute(Vec3D_t* r1, Vec3D_t* r2, Vec3D_t* R1, Vec3D_t* R2, arm_matrix
     arm_mat_mult_f32(&a, &b, &att);
 
     memcpy(mat->pData, attdata, 9 * sizeof(float32_t));
+
+    return 1;
+}
+
+int TRIAD_CalculateOmega(arm_matrix_instance_f32* atta, arm_matrix_instance_f32* attb, float interval, Vec3D_t* omega)
+{
+    arm_matrix_instance_f32 diff;
+    arm_matrix_instance_f32 attt;
+    arm_matrix_instance_f32 omegamat;
+    float32_t diffdata[3 * 3];
+    float32_t atttdata[3 * 3];
+    float32_t omegamatdata[3 * 3];
+
+    assert(atta);
+    assert(attb);
+    assert(omega);
+    assert(atta->numCols == 3);
+    assert(atta->numRows == 3);
+    assert(attb->numCols == 3);
+    assert(attb->numRows == 3);
+    assert(atta->pData);
+    assert(attb->pData);
+
+    arm_mat_init_f32(&diff, 3, 3, diffdata);
+    arm_mat_init_f32(&attt, 3, 3, atttdata);
+    arm_mat_init_f32(&omegamat, 3, 3, omegamatdata);
+    
+    arm_mat_sub_f32(atta, attb, &diff);
+    arm_mat_scale_f32(&diff, 1.0 / interval, &diff);
+    
+    memcpy(attt.pData, atta->pData, 3 * 3 * sizeof(float));
+    TRIAD_MatTrans3x3(&attt);
+
+    arm_mat_mult_f32(&diff, &attt, &omegamat);
+
+    omega->X = -omegamat.pData[7];
+    omega->Y = -omegamat.pData[2];
+    omega->Z = -omegamat.pData[3];
 
     return 1;
 }

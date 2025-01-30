@@ -23,10 +23,13 @@ float sampleelevation = 0;
 float satelevation = 1024;
 vec3_t satpos = {0, 0, 0};
 arm_matrix_instance_f32 satrotmat;
+arm_matrix_instance_f32 satlasttriadmat;
 arm_matrix_instance_f32 sattriadmat;
 Vec3D_t satrotvelaxis;
 float satrotmatdata[9] = {};
+float satlasttriadmatdata[9] = {};
 float sattriadmatdata[9] = {};
+float lasttriadtime;
 vec3_t sundir = { 1.0, 0.0, 0.0 };
 
 float camtheta = 45, camphi = 45;
@@ -585,7 +588,7 @@ void render(void)
     float satrotvelq[4];
     arm_matrix_instance_f32 satrotvelm;
     arm_matrix_instance_f32 satrotm;
-    vec3_t satomega;
+    vec3_t satomega, computedomega;
     float satrotvelmdata[9] = {};
     float satrotmdata[9] = {};
     struct timespec ts;
@@ -652,6 +655,7 @@ void render(void)
     arm_mat_vec_mult_f32(&satrotm, satmagv, NULL);
     arm_mat_vec_mult_f32(&satrotm, satsunv, NULL);
 
+    memcpy(satlasttriadmat.pData, sattriadmat.pData, 3 * 3 * sizeof(float));
     TRIAD_Compute(magv, sunv, satmagv, satsunv, &sattriadmat);
 
     // Sat Basis Vectors
@@ -678,14 +682,27 @@ void render(void)
         drawarrow(lnstart, lnend, col);
     }
 
+    TRIAD_CalculateOmega(&satlasttriadmat, &sattriadmat, seconds - lasttriadtime, computedomega);
+
     // Sat Omega Vector
-    col[0] = 0.3;
-    col[1] = 0.1;
+    col[0] = 0.6;
+    col[1] = 0.5;
     col[2] = 0.7;
     VectorScale(satomega, satrotvelaxis.Vec, radpersecond * 512.0);
     VectorCopy(lnstart, satpos);
     VectorAdd(lnend, satomega, lnstart);
     drawarrow(lnstart, lnend, col);
+
+    // Computed Omega Vector
+    col[0] = 0.3;
+    col[1] = 0.1;
+    col[2] = 0.7;
+    VectorScale(computedomega, computedomega, 512.0);
+    VectorCopy(lnstart, satpos);
+    VectorAdd(lnend, computedomega, lnstart);
+    drawarrow(lnstart, lnend, col);
+
+    lasttriadtime = seconds;
 
     // Sat Mag Vector
     col[0] = 1;
@@ -819,6 +836,7 @@ int main(int argc, char** argv)
     glfwSetKeyCallback(win, keycallback);
 
     arm_mat_init_f32(&satrotmat, 3, 3, satrotmatdata);
+    arm_mat_init_f32(&satlasttriadmat, 3, 3, satlasttriadmatdata);
     arm_mat_init_f32(&sattriadmat, 3, 3, sattriadmatdata);
 
     randsatrot();
