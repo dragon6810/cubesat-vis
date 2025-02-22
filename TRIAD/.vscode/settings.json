@@ -9,6 +9,7 @@
         "coordinateconversions.h": "c",
         "stdbool.h": "c",
         "testing.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "geomagdata.h": "c"
     }
 }

@@ -11,7 +11,7 @@
 #include <CoordinateConversions/CoordinateConversions.h>
 #include <Testing/Testing.h>
 
-#include <Geomag/Data.h>
+#include <Geomag/GeomagData.h>
 
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -188,21 +188,24 @@ void Geomag_RunTests(const char *filename)
 
         CoordSpherical.r = Ellip.re + altitude;
         CoordSpherical.phig = DEG2RAD(latitude);
-        CoordSpherical.lambda = DEG2RAD(longitude) + EARTH_ROT_SPEED * (time - EQUINOX_TIME); // relative to vernal equinox
         CoordSpherical.lambda = DEG2RAD(longitude);
 
         Coord_NEDToECEF(&NED, &ECEF, latitude, longitude);
         Coord_ECEFToECI(time, &ECEF, &ECI);
 
+        CoordSpherical.lambda;
         cart.X = CoordSpherical.r * cosf(CoordSpherical.lambda) * cosf(CoordSpherical.phig);
         cart.Y = CoordSpherical.r * sinf(CoordSpherical.lambda) * cosf(CoordSpherical.phig);
         cart.Z = CoordSpherical.r * sinf(CoordSpherical.phig);
 
+        Coord_ECEFToECI(time, &cart, &cart);
         Geomag_GetMagEquatorial(&time, &cart, &vec);
 
         assert(i < 100);
         testname[9] = (i / 10) + '0';
         testname[10] = (i % 10) + '0';
+
+        printf("%s:\n   { %f, %f, %f }\n    { %f, %f, %f }\n", testname, ECI.X, ECI.Y, ECI.Z, vec.X, vec.Y, vec.Z);
 
         Testing_TestVector(ECI, cart, vec, 512.0, testname);
     }
@@ -233,8 +236,7 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEq
     MAGtype_GeoMagneticElements GeomagErrors;
     MAGtype_Date date;
     
-    //Geomag_ECIToECEF(*t, SatECI, &SatECEF);
-    SatECEF = *SatECI;
+    Coord_ECIToECEF(*t, SatECI, &SatECEF);
 
     // theta is latitude, phi is longitude.
     arm_atan2_f32(SatECEF.Z, sqrtf(SatECEF.X*SatECEF.X + SatECEF.Y*SatECEF.Y), &theta);
