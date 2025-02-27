@@ -1,5 +1,5 @@
 CC := gcc -c
-CC_FLAGS := -Wall -O3 -g -std=gnu11 -fsanitize=address
+CC_FLAGS := -Wall -O3 -g -std=gnu11 -fsanitize=address -MMD
 
 LD := gcc
 LD_FLAGS := -fsanitize=address
@@ -39,6 +39,8 @@ $(BIN_FILE): $(OBJ_FILE) ../common/bin/common.a
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CC_FLAGS) -c $< -o $@
+
+-include $(OBJ_FILE:.o=.d)
 
 clean:
 	@rm -r $(BIN_DIR)

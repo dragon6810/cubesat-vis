@@ -16,7 +16,7 @@
 #define RAD2DEG(rad)    ((rad)*(180.0L/PI))
 #define DEG2RAD(deg)    ((deg)*(PI/180.0L))
 
-void Coord_NEDToECEF(Vec3D_t* NED, Vec3D_t *ECEF, float32_t theta, float32_t phi_p);
+void Coord_NEDToECEF(Vec3D_t* NED, Vec3D_t *ECEF, float32_t lat, float32_t lon);
 void Coord_ECEFToECI(time_t t, const Vec3D_t* ECEF, Vec3D_t* ECI);
 void Coord_ECIToECEF(time_t t, const Vec3D_t* ECI, Vec3D_t* ECEF);
 

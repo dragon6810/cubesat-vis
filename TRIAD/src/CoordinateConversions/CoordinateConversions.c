@@ -10,15 +10,15 @@
 
 #include <Testing/Testing.h>
 
-void Coord_NEDToECEF(Vec3D_t* NED, Vec3D_t *ECEF, float32_t theta, float32_t phi_p)
+void Coord_NEDToECEF(Vec3D_t* NED, Vec3D_t *ECEF, float32_t lat, float32_t lon)
 {
     float lambda, phi;
     float sinlambda, coslambda;
     float sinphi, cosphi;
     Vec3D_t spherical;
 
-    lambda = DEG2RAD(phi_p);
-    phi = DEG2RAD(theta);
+    lambda = DEG2RAD(lon);
+    phi = DEG2RAD(lat);
 
     sinlambda = sinf(lambda);
     coslambda = cosf(lambda);
@@ -70,23 +70,30 @@ void Coord_ECIToECEF(time_t t, const Vec3D_t* ECI, Vec3D_t* ECEF)
 static void Coord_TestNEDToECEF(void)
 {
     Vec3D_t NED, ECEF, expect;
-    float theta, phi;
+    float lat, lon;
 
     // Nominal cases
 
     NED.X = 1000.0; NED.Y = 2000.0; NED.Z = -500.0;
-    theta = 0;
-    phi = 0;
+    lat = 0;
+    lon = 0;
     expect.X = 500.0; expect.Y = 2000.0; expect.Z = 1000.0;
-    Coord_NEDToECEF(&NED, &ECEF, theta, phi);
+    Coord_NEDToECEF(&NED, &ECEF, lat, lon);
     Testing_TestVector(expect, NED, ECEF, 0.01, "Coord_NEDToECEF Nominal Test 1");
 
     NED.X = 1000.0; NED.Y = 2000.0; NED.Z = -500;
-    theta = 0;
-    phi = 180;
+    lat = 0;
+    lon = 180;
     expect.X = -500.0; expect.Y = -2000.0; expect.Z = 1000.0;
-    Coord_NEDToECEF(&NED, &ECEF, theta, phi);
+    Coord_NEDToECEF(&NED, &ECEF, lat, lon);
     Testing_TestVector(expect, NED, ECEF, 0.01, "Coord_NEDToECEF Nominal Test 2");
+
+    NED.X = 1000.0; NED.Y = 1000.0; NED.Z = 0;
+    lat = 45;
+    lon = 90;
+    expect.X = -1000.0; expect.Y = -707.10678; expect.Z = 707.10678;
+    Coord_NEDToECEF(&NED, &ECEF, lat, lon);
+    Testing_TestVector(expect, NED, ECEF, 0.01, "Coord_NEDToECEF Nominal Test 3");
 }
 
 void Coord_TestConversions(void)
