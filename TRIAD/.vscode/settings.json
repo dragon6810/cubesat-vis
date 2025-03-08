@@ -10,6 +10,7 @@
         "stdbool.h": "c",
         "testing.h": "c",
         "stdlib.h": "c",
-        "geomagdata.h": "c"
+        "geomagdata.h": "c",
+        "complex": "c"
     }
 }

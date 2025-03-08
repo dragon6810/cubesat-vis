@@ -7,6 +7,8 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include <arm_math.h>
+
 /* $Id: GeomagnetismLibrary.c 1521 2017-01-24 17:52:41Z awoods $
  *
  * ABSTRACT
@@ -1052,8 +1054,8 @@ CALLS : none
     GeoMagneticElements->Y = MagneticResultsGeo->By;
     GeoMagneticElements->Z = MagneticResultsGeo->Bz;
 
-    GeoMagneticElements->H = sqrt(MagneticResultsGeo->Bx * MagneticResultsGeo->Bx + MagneticResultsGeo->By * MagneticResultsGeo->By);
-    GeoMagneticElements->F = sqrt(GeoMagneticElements->H * GeoMagneticElements->H + MagneticResultsGeo->Bz * MagneticResultsGeo->Bz);
+    arm_sqrt_f32(MagneticResultsGeo->Bx * MagneticResultsGeo->Bx + MagneticResultsGeo->By * MagneticResultsGeo->By, &GeoMagneticElements->H);
+    arm_sqrt_f32(GeoMagneticElements->H * GeoMagneticElements->H + MagneticResultsGeo->Bz * MagneticResultsGeo->Bz, &GeoMagneticElements->F);
     GeoMagneticElements->Decl = RAD2DEG(atan2(GeoMagneticElements->Y, GeoMagneticElements->X));
     GeoMagneticElements->Incl = RAD2DEG(atan2(GeoMagneticElements->Z, GeoMagneticElements->H));
 
@@ -1229,7 +1231,8 @@ CALLS : none
 
     /* compute the local radius of curvature on the WGS-84 reference ellipsoid */
 
-    rc = Ellip.a / sqrt(1.0 - Ellip.epssq * SinLat * SinLat);
+    arm_sqrt_f32(1.0 - Ellip.epssq * SinLat * SinLat, &rc);
+    rc = Ellip.a / rc;
 
     /* compute ECEF Cartesian coordinates of specified point (for longitude=0) */
 
@@ -1238,7 +1241,7 @@ CALLS : none
 
     /* compute spherical radius and angle lambda and phi of specified point */
 
-    CoordSpherical->r = sqrt(xp * xp + zp * zp);
+    arm_sqrt_f32(xp * xp + zp * zp, &CoordSpherical->r);
     CoordSpherical->phig = RAD2DEG(asin(zp / CoordSpherical->r)); /* geocentric latitude */
     CoordSpherical->lambda = CoordGeodetic.lambda; /* longitude */
 
@@ -1637,8 +1640,7 @@ void MAG_TMfwd4(float Eps, float Epssq, float K0R4, float K0R4oa,
         sig2 = sig2 + 2 * Acoeff[0] * s2u * s2v;
 
         /*    Combined square roots  */
-        comroo = sqrt((1 - Epssq * SPhi * SPhi) * denom2 *
-                (sig1 * sig1 + sig2 * sig2));
+        arm_sqrt_f32((1 - Epssq * SPhi * SPhi) * denom2 * (sig1 * sig1 + sig2 * sig2), &comroo);
 
         *pscale = K0R4oa * 2 * denom * comroo;
         *CoM = atan2(SChi * SLam, CLam) + atan2(sig2, sig1);
@@ -1824,7 +1826,7 @@ int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax)
 
     for(n = 0; n <= 2 * nMax + 1; ++n)
     {
-        PreSqr[n] = sqrt((float) (n));
+        arm_sqrt_f32((float)n, &PreSqr[n]);
     }
 
     k = 2;
@@ -1844,7 +1846,7 @@ int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax)
     }
 
     /*z = sin (geocentric latitude) */
-    z = sqrt((1.0 - x)*(1.0 + x));
+    arm_sqrt_f32((1.0 - x)*(1.0 + x), &z);
     pm2 = 1.0;
     Pcup[0] = 1.0;
     dPcup[0] = 0.0;
@@ -1936,11 +1938,11 @@ int MAG_PcupLow(float *Pcup, float *dPcup, float x, int nMax)
  */
 {
     int n, m, index, index1, index2, NumTerms;
-    float k, z, *schmidtQuasiNorm;
+    float k, z, *schmidtQuasiNorm, temp;
     Pcup[0] = 1.0;
     dPcup[0] = 0.0;
     /*sin (geocentric latitude) - sin_phi */
-    z = sqrt((1.0 - x) * (1.0 + x));
+    arm_sqrt_f32((1.0 - x) * (1.0 + x), &z);
 
     NumTerms = ((nMax + 1) * (nMax + 2) / 2);
     schmidtQuasiNorm = (float *) malloc((NumTerms + 1) * sizeof ( float));
@@ -1999,7 +2001,8 @@ int MAG_PcupLow(float *Pcup, float *dPcup, float x, int nMax)
         {
             index = (n * (n + 1) / 2 + m);
             index1 = (n * (n + 1) / 2 + m - 1);
-            schmidtQuasiNorm[index] = schmidtQuasiNorm[index1] * sqrt((float) ((n - m + 1) * (m == 1 ? 2 : 1)) / (float) (n + m));
+            arm_sqrt_f32((float) ((n - m + 1) * (m == 1 ? 2 : 1)) / (float) (n + m), &temp);
+            schmidtQuasiNorm[index] = schmidtQuasiNorm[index1] * temp;
         }
 
     }
@@ -2123,7 +2126,8 @@ int MAG_SecVarSummationSpecial(MAGtype_MagneticModel *MagneticModel, MAGtype_Sph
     {
         index = (n * (n + 1) / 2 + 1);
         schmidtQuasiNorm2 = schmidtQuasiNorm1 * (float) (2 * n - 1) / (float) n;
-        schmidtQuasiNorm3 = schmidtQuasiNorm2 * sqrt((float) (n * 2) / (float) (n + 1));
+        arm_sqrt_f32((float) (n * 2) / (float) (n + 1), &schmidtQuasiNorm3);
+        schmidtQuasiNorm3 *= schmidtQuasiNorm2;
         schmidtQuasiNorm1 = schmidtQuasiNorm2;
         if(n == 1)
         {
@@ -2272,7 +2276,8 @@ See Section 1.4, "SINGULARITIES AT THE GEOGRAPHIC POLES", WMM Technical report
 
         index = (n * (n + 1) / 2 + 1);
         schmidtQuasiNorm2 = schmidtQuasiNorm1 * (float) (2 * n - 1) / (float) n;
-        schmidtQuasiNorm3 = schmidtQuasiNorm2 * sqrt((float) (n * 2) / (float) (n + 1));
+        arm_sqrt_f32((float) (n * 2) / (float) (n + 1), &schmidtQuasiNorm3);
+        schmidtQuasiNorm3 *= schmidtQuasiNorm2;
         schmidtQuasiNorm1 = schmidtQuasiNorm2;
         if(n == 1)
         {
@@ -2515,7 +2520,7 @@ void MAG_WMMErrorCalc(float H, MAGtype_GeoMagneticElements *Uncertainty)
     Uncertainty->Y = WMM_UNCERTAINTY_Y;
      decl_variable = (WMM_UNCERTAINTY_D_COEF / H);
      decl_constant = (WMM_UNCERTAINTY_D_OFFSET);
-     Uncertainty->Decl = sqrt(decl_constant*decl_constant + decl_variable*decl_variable);
+     arm_sqrt_f32(decl_constant*decl_constant + decl_variable*decl_variable, &Uncertainty->Decl);
      if (Uncertainty->Decl > 180) {
          Uncertainty->Decl = 180;
      }
@@ -2598,7 +2603,7 @@ int MAG_SetElipseDefaults(MAGtype_Ellipsoid *Ellip)
     Ellip->a = 6378.137; /*semi-major axis of the ellipsoid in */
     Ellip->b = 6356.7523142; /*semi-minor axis of the ellipsoid in */
     Ellip->fla = 1 / 298.257223563; /* flattening */
-    Ellip->eps = sqrt(1 - (Ellip->b * Ellip->b) / (Ellip->a * Ellip->a)); /*first eccentricity */
+    arm_sqrt_f32(1 - (Ellip->b * Ellip->b) / (Ellip->a * Ellip->a), &Ellip->eps); /*first eccentricity */
     Ellip->epssq = (Ellip->eps * Ellip->eps); /*first eccentricity squared */
     Ellip->re = 6371.2; /* Earth's radius */
 
