@@ -22,13 +22,13 @@
 #include <arm_math.h>
 #include <time.h>
 
+#include "GeomagLib.h"
+
 /*
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 * EXTERNAL DEFINES
 *~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 */
-#define MAX_N_MODE 12
-#define CALCULATE_NUMTERMS(N)    (N * ( N + 1 ) / 2 + N)
 
 #define MAXLINELENGTH (1024)
 

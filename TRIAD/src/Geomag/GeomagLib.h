@@ -71,6 +71,8 @@
 #define WGS84ON 1
 #define MSLON 2
 
+#define MAX_N_MODE 12
+#define CALCULATE_NUMTERMS(N)    (N * ( N + 1 ) / 2 + N)
 
 /*
 Data types and prototype declaration for
@@ -101,10 +103,10 @@ typedef struct {
     float EditionDate;
     float epoch; /*Base time of Geomagnetic model epoch (yrs)*/
     char ModelName[32];
-    float *Main_Field_Coeff_G; /* C - Gauss coefficients of main geomagnetic model (nT) Index is (n * (n + 1) / 2 + m) */
-    float *Main_Field_Coeff_H; /* C - Gauss coefficients of main geomagnetic model (nT) */
-    float *Secular_Var_Coeff_G; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
-    float *Secular_Var_Coeff_H; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
+    float Main_Field_Coeff_G[CALCULATE_NUMTERMS(MAX_N_MODE) + 1]; /* C - Gauss coefficients of main geomagnetic model (nT) Index is (n * (n + 1) / 2 + m) */
+    float Main_Field_Coeff_H[CALCULATE_NUMTERMS(MAX_N_MODE) + 1]; /* C - Gauss coefficients of main geomagnetic model (nT) */
+    float Secular_Var_Coeff_G[CALCULATE_NUMTERMS(MAX_N_MODE) + 1]; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
+    float Secular_Var_Coeff_H[CALCULATE_NUMTERMS(MAX_N_MODE) + 1]; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
     int nMax; /* Maximum degree of spherical harmonic model */
     int nMaxSecVar; /* Maximum degree of spherical harmonic secular model */
     int SecularVariationUsed; /* Whether or not the magnetic secular variation vector will be needed by program*/
@@ -143,8 +145,8 @@ typedef struct {
 } MAGtype_Date;
 
 typedef struct {
-    float *Pcup; /* Legendre Function */
-    float *dPcup; /* Derivative of Legendre fcn */
+    float Pcup[CALCULATE_NUMTERMS(MAX_N_MODE) + 1]; /* Legendre Function */
+    float dPcup[CALCULATE_NUMTERMS(MAX_N_MODE) + 1]; /* Derivative of Legendre fcn */
 } MAGtype_LegendreFunction;
 
 typedef struct {
@@ -154,9 +156,9 @@ typedef struct {
 } MAGtype_MagneticResults;
 
 typedef struct {
-    float *RelativeRadiusPower; /* [earth_reference_radius_km / sph. radius ]^n  */
-    float *cos_mlambda; /*cp(m)  - cosine of (m*spherical coord. longitude)*/
-    float *sin_mlambda; /* sp(m)  - sine of (m*spherical coord. longitude) */
+    float RelativeRadiusPower[MAX_N_MODE + 1]; /* [earth_reference_radius_km / sph. radius ]^n  */
+    float cos_mlambda[MAX_N_MODE + 1]; /*cp(m)  - cosine of (m*spherical coord. longitude)*/
+    float sin_mlambda[MAX_N_MODE + 1]; /* sp(m)  - sine of (m*spherical coord. longitude) */
 } MAGtype_SphericalHarmonicVariables;
 
 typedef struct {

@@ -310,18 +310,7 @@ CALLS : none
         MAG_Error(1);
         return NULL;
     }
-    LegendreFunction->Pcup = (float *) malloc((NumTerms + 1) * sizeof ( float));
-    if(LegendreFunction->Pcup == 0)
-    {
-        MAG_Error(1);
-        return NULL;
-    }
-    LegendreFunction->dPcup = (float *) malloc((NumTerms + 1) * sizeof ( float));
-    if(LegendreFunction->dPcup == 0)
-    {
-        MAG_Error(1);
-        return NULL;
-    }
+    
     return LegendreFunction;
 } /*MAGtype_LegendreFunction*/
 
@@ -361,33 +350,6 @@ CALLS : none
         return NULL;
     }
 
-    MagneticModel->Main_Field_Coeff_G = (float *) malloc((NumTerms + 1) * sizeof ( float));
-
-    if(MagneticModel->Main_Field_Coeff_G == NULL)
-    {
-        MAG_Error(2);
-        return NULL;
-    }
-
-    MagneticModel->Main_Field_Coeff_H = (float *) malloc((NumTerms + 1) * sizeof ( float));
-
-    if(MagneticModel->Main_Field_Coeff_H == NULL)
-    {
-        MAG_Error(2);
-        return NULL;
-    }
-    MagneticModel->Secular_Var_Coeff_G = (float *) malloc((NumTerms + 1) * sizeof ( float));
-    if(MagneticModel->Secular_Var_Coeff_G == NULL)
-    {
-        MAG_Error(2);
-        return NULL;
-    }
-    MagneticModel->Secular_Var_Coeff_H = (float *) malloc((NumTerms + 1) * sizeof ( float));
-    if(MagneticModel->Secular_Var_Coeff_H == NULL)
-    {
-        MAG_Error(2);
-        return NULL;
-    }
     MagneticModel->CoefficientFileEndDate = 0;
     MagneticModel->EditionDate = 0;
     strcpy(MagneticModel->ModelName, "");
@@ -411,9 +373,6 @@ MAGtype_SphericalHarmonicVariables* MAG_AllocateSphVarMemory(int nMax)
 {
     MAGtype_SphericalHarmonicVariables* SphVariables;
     SphVariables  = (MAGtype_SphericalHarmonicVariables*) calloc(1, sizeof(MAGtype_SphericalHarmonicVariables));
-    SphVariables->RelativeRadiusPower = (float *) malloc((nMax + 1) * sizeof ( float));
-    SphVariables->cos_mlambda = (float *) malloc((nMax + 1) * sizeof (float));
-    SphVariables->sin_mlambda = (float *) malloc((nMax + 1) * sizeof (float));
     return SphVariables;
 } /*MAG_AllocateSphVarMemory*/
 
@@ -496,51 +455,10 @@ CALLS : none
 
  */
 {
-    if(MagneticModel->Main_Field_Coeff_G)
-    {
-        free(MagneticModel->Main_Field_Coeff_G);
-        MagneticModel->Main_Field_Coeff_G = NULL;
-    }
-    if(MagneticModel->Main_Field_Coeff_H)
-    {
-        free(MagneticModel->Main_Field_Coeff_H);
-        MagneticModel->Main_Field_Coeff_H = NULL;
-    }
-    if(MagneticModel->Secular_Var_Coeff_G)
-    {
-        free(MagneticModel->Secular_Var_Coeff_G);
-        MagneticModel->Secular_Var_Coeff_G = NULL;
-    }
-    if(MagneticModel->Secular_Var_Coeff_H)
-    {
-        free(MagneticModel->Secular_Var_Coeff_H);
-        MagneticModel->Secular_Var_Coeff_H = NULL;
-    }
     if(MagneticModel)
     {
         free(MagneticModel);
         MagneticModel = NULL;
-    }
-
-    if(TimedMagneticModel->Main_Field_Coeff_G)
-    {
-        free(TimedMagneticModel->Main_Field_Coeff_G);
-        TimedMagneticModel->Main_Field_Coeff_G = NULL;
-    }
-    if(TimedMagneticModel->Main_Field_Coeff_H)
-    {
-        free(TimedMagneticModel->Main_Field_Coeff_H);
-        TimedMagneticModel->Main_Field_Coeff_H = NULL;
-    }
-    if(TimedMagneticModel->Secular_Var_Coeff_G)
-    {
-        free(TimedMagneticModel->Secular_Var_Coeff_G);
-        TimedMagneticModel->Secular_Var_Coeff_G = NULL;
-    }
-    if(TimedMagneticModel->Secular_Var_Coeff_H)
-    {
-        free(TimedMagneticModel->Secular_Var_Coeff_H);
-        TimedMagneticModel->Secular_Var_Coeff_H = NULL;
     }
 
     if(TimedMagneticModel)
@@ -549,16 +467,6 @@ CALLS : none
         TimedMagneticModel = NULL;
     }
 
-    if(LegendreFunction->Pcup)
-    {
-        free(LegendreFunction->Pcup);
-        LegendreFunction->Pcup = NULL;
-    }
-    if(LegendreFunction->dPcup)
-    {
-        free(LegendreFunction->dPcup);
-        LegendreFunction->dPcup = NULL;
-    }
     if(LegendreFunction)
     {
         free(LegendreFunction);
@@ -589,26 +497,6 @@ CALLS : none
 
  */
 {
-    if(MagneticModel->Main_Field_Coeff_G)
-    {
-        free(MagneticModel->Main_Field_Coeff_G);
-        MagneticModel->Main_Field_Coeff_G = NULL;
-    }
-    if(MagneticModel->Main_Field_Coeff_H)
-    {
-        free(MagneticModel->Main_Field_Coeff_H);
-        MagneticModel->Main_Field_Coeff_H = NULL;
-    }
-    if(MagneticModel->Secular_Var_Coeff_G)
-    {
-        free(MagneticModel->Secular_Var_Coeff_G);
-        MagneticModel->Secular_Var_Coeff_G = NULL;
-    }
-    if(MagneticModel->Secular_Var_Coeff_H)
-    {
-        free(MagneticModel->Secular_Var_Coeff_H);
-        MagneticModel->Secular_Var_Coeff_H = NULL;
-    }
     if(MagneticModel)
     {
         free(MagneticModel);
@@ -630,16 +518,6 @@ CALLS : none
 
  */
 {
-    if(LegendreFunction->Pcup)
-    {
-        free(LegendreFunction->Pcup);
-        LegendreFunction->Pcup = NULL;
-    }
-    if(LegendreFunction->dPcup)
-    {
-        free(LegendreFunction->dPcup);
-        LegendreFunction->dPcup = NULL;
-    }
     if(LegendreFunction)
     {
         free(LegendreFunction);
@@ -660,21 +538,6 @@ INPUT : LegendreFunction Pointer to data structure with the following elements
  CALLS : none
  */
 {
-    if(SphVar->RelativeRadiusPower)
-    {
-        free(SphVar->RelativeRadiusPower);
-        SphVar->RelativeRadiusPower = NULL;
-    }
-    if(SphVar->cos_mlambda)
-    {
-        free(SphVar->cos_mlambda);
-        SphVar->cos_mlambda = NULL;
-    }
-    if(SphVar->sin_mlambda)
-    {
-        free(SphVar->sin_mlambda);
-        SphVar->sin_mlambda = NULL;
-    }
     if(SphVar)
     {
         free(SphVar);
@@ -884,7 +747,8 @@ int MAG_readMagneticModel_SHDF(char *filename, MAGtype_MagneticModel *(*magnetic
     };
 
     char paramvalues[NOOFPARAMS][MAXLINELENGTH];
-    char *line = (char *) malloc(MAXLINELENGTH);
+    char linedata[MAXLINELENGTH];
+    char *line = linedata;
     char *ptrreset;
     char paramvalue[MAXLINELENGTH];
     int paramvaluelength = 0;
@@ -998,7 +862,6 @@ int MAG_readMagneticModel_SHDF(char *filename, MAGtype_MagneticModel *(*magnetic
     for(i = 0; i < array_size; i++) (*magneticmodels)[i]->CoefficientFileEndDate = cutoff;
 
     free(ptrreset);
-    line = NULL;
     ptrreset = NULL;
     return header_index + 1;
 }/*MAG_readMagneticModel_SHDF*/
@@ -1785,7 +1648,9 @@ int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax)
  */
 {
     float pm2, pm1, pmm, plm, rescalem, z, scalef;
-    float *f1, *f2, *PreSqr;
+    float f1[CALCULATE_NUMTERMS(MAX_N_MODE) + 1];
+    float f2[CALCULATE_NUMTERMS(MAX_N_MODE) + 1];
+    float PreSqr[CALCULATE_NUMTERMS(MAX_N_MODE) + 1];
     int k, kstart, m, n, NumTerms;
 
     NumTerms = ((nMax + 1) * (nMax + 2) / 2);
@@ -1794,31 +1659,6 @@ int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax)
     if(fabs(x) == 1.0)
     {
         printf("Error in PcupHigh: derivative cannot be calculated at poles\n");
-        return FALSE;
-    }
-
-
-    f1 = (float *) malloc((NumTerms + 1) * sizeof ( float));
-    if(f1 == NULL)
-    {
-        MAG_Error(18);
-        return FALSE;
-    }
-
-
-    PreSqr = (float *) malloc((NumTerms + 1) * sizeof ( float));
-
-    if(PreSqr == NULL)
-    {
-        MAG_Error(18);
-        return FALSE;
-    }
-
-    f2 = (float *) malloc((NumTerms + 1) * sizeof ( float));
-
-    if(f2 == NULL)
-    {
-        MAG_Error(18);
         return FALSE;
     }
 
@@ -1904,9 +1744,6 @@ int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax)
     pmm = pmm / PreSqr[2 * nMax];
     Pcup[kstart] = pmm * rescalem;
     dPcup[kstart] = -(float) (nMax) * x * Pcup[kstart] / z;
-    free(f1);
-    free(PreSqr);
-    free(f2);
 
     return TRUE;
 } /* MAG_PcupHigh */
@@ -1938,20 +1775,14 @@ int MAG_PcupLow(float *Pcup, float *dPcup, float x, int nMax)
  */
 {
     int n, m, index, index1, index2, NumTerms;
-    float k, z, *schmidtQuasiNorm, temp;
+    float k, z, temp;
+    float schmidtQuasiNorm[CALCULATE_NUMTERMS(MAX_N_MODE) + 1];
     Pcup[0] = 1.0;
     dPcup[0] = 0.0;
     /*sin (geocentric latitude) - sin_phi */
     arm_sqrt_f32((1.0 - x) * (1.0 + x), &z);
 
     NumTerms = ((nMax + 1) * (nMax + 2) / 2);
-    schmidtQuasiNorm = (float *) malloc((NumTerms + 1) * sizeof ( float));
-
-    if(schmidtQuasiNorm == NULL)
-    {
-        MAG_Error(19);
-        return FALSE;
-    }
 
     /*	 First,	Compute the Gauss-normalized associated Legendre  functions*/
     for(n = 1; n <= nMax; n++)
@@ -2023,8 +1854,6 @@ int MAG_PcupLow(float *Pcup, float *dPcup, float x, int nMax)
         }
     }
 
-    if(schmidtQuasiNorm)
-        free(schmidtQuasiNorm);
     return TRUE;
 } /*MAG_PcupLow */
 
@@ -2106,15 +1935,8 @@ int MAG_SecVarSummationSpecial(MAGtype_MagneticModel *MagneticModel, MAGtype_Sph
 
      */
     int n, index;
-    float k, sin_phi, *PcupS, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
-
-    PcupS = (float *) malloc((MagneticModel->nMaxSecVar + 1) * sizeof (float));
-
-    if(PcupS == NULL)
-    {
-        MAG_Error(15);
-        return FALSE;
-    }
+    float k, sin_phi, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
+    float PcupS[MAX_N_MODE + 1];
 
     PcupS[0] = 1;
     schmidtQuasiNorm1 = 1.0;
@@ -2149,8 +1971,6 @@ int MAG_SecVarSummationSpecial(MAGtype_MagneticModel *MagneticModel, MAGtype_Sph
                 * PcupS[n] * schmidtQuasiNorm3;
     }
 
-    if(PcupS)
-        free(PcupS);
     return TRUE;
 }/*SecVarSummationSpecial*/
 
@@ -2252,14 +2072,8 @@ See Section 1.4, "SINGULARITIES AT THE GEOGRAPHIC POLES", WMM Technical report
  */
 {
     int n, index;
-    float k, sin_phi, *PcupS, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
-
-    PcupS = (float *) malloc((MagneticModel->nMax + 1) * sizeof (float));
-    if(PcupS == 0)
-    {
-        MAG_Error(14);
-        return FALSE;
-    }
+    float k, sin_phi, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
+    float PcupS[MAX_N_MODE + 1];
 
     PcupS[0] = 1;
     schmidtQuasiNorm1 = 1.0;
@@ -2299,8 +2113,6 @@ See Section 1.4, "SINGULARITIES AT THE GEOGRAPHIC POLES", WMM Technical report
                 * PcupS[n] * schmidtQuasiNorm3;
     }
 
-    if(PcupS)
-        free(PcupS);
     return TRUE;
 }/*MAG_SummationSpecial */
 
@@ -2559,7 +2371,7 @@ int calculateMagneticField(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *M
     int NumTerms, Flag = 1, nMax = 0;
     int epochs = 1;
     int alt_bound[2] = {ALT_BOUND_MIN, NO_ALT_MAX};
-    char* Qstring = malloc(sizeof(char) * 1028);
+    char Qstring[1028];
 
     strncpy(VersionDate, VERSIONDATE_LARGE + 39, 11);
     VersionDate[11] = '\0';
