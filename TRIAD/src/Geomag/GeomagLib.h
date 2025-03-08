@@ -98,84 +98,84 @@ typedef enum {
 } MAGenum_Comp;
 
 typedef struct {
-    double EditionDate;
-    double epoch; /*Base time of Geomagnetic model epoch (yrs)*/
+    float EditionDate;
+    float epoch; /*Base time of Geomagnetic model epoch (yrs)*/
     char ModelName[32];
-    double *Main_Field_Coeff_G; /* C - Gauss coefficients of main geomagnetic model (nT) Index is (n * (n + 1) / 2 + m) */
-    double *Main_Field_Coeff_H; /* C - Gauss coefficients of main geomagnetic model (nT) */
-    double *Secular_Var_Coeff_G; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
-    double *Secular_Var_Coeff_H; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
+    float *Main_Field_Coeff_G; /* C - Gauss coefficients of main geomagnetic model (nT) Index is (n * (n + 1) / 2 + m) */
+    float *Main_Field_Coeff_H; /* C - Gauss coefficients of main geomagnetic model (nT) */
+    float *Secular_Var_Coeff_G; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
+    float *Secular_Var_Coeff_H; /* CD - Gauss coefficients of secular geomagnetic model (nT/yr) */
     int nMax; /* Maximum degree of spherical harmonic model */
     int nMaxSecVar; /* Maximum degree of spherical harmonic secular model */
     int SecularVariationUsed; /* Whether or not the magnetic secular variation vector will be needed by program*/
-    double CoefficientFileEndDate; 
+    float CoefficientFileEndDate; 
     
 } MAGtype_MagneticModel;
 
 typedef struct {
-    double a; /*semi-major axis of the ellipsoid*/
-    double b; /*semi-minor axis of the ellipsoid*/
-    double fla; /* flattening */
-    double epssq; /*first eccentricity squared */
-    double eps; /* first eccentricity */
-    double re; /* mean radius of  ellipsoid*/
+    float a; /*semi-major axis of the ellipsoid*/
+    float b; /*semi-minor axis of the ellipsoid*/
+    float fla; /* flattening */
+    float epssq; /*first eccentricity squared */
+    float eps; /* first eccentricity */
+    float re; /* mean radius of  ellipsoid*/
 } MAGtype_Ellipsoid;
 
 typedef struct {
-    double lambda; /* longitude */
-    double phi; /* geodetic latitude */
-    double HeightAboveEllipsoid; /* height above the ellipsoid (HaE) */
-    double HeightAboveGeoid; /* (height above the EGM96 geoid model ) */
+    float lambda; /* longitude */
+    float phi; /* geodetic latitude */
+    float HeightAboveEllipsoid; /* height above the ellipsoid (HaE) */
+    float HeightAboveGeoid; /* (height above the EGM96 geoid model ) */
     int UseGeoid;
 } MAGtype_CoordGeodetic;
 
 typedef struct {
-    double lambda; /* longitude*/
-    double phig; /* geocentric latitude*/
-    double r; /* distance from the center of the ellipsoid*/
+    float lambda; /* longitude*/
+    float phig; /* geocentric latitude*/
+    float r; /* distance from the center of the ellipsoid*/
 } MAGtype_CoordSpherical;
 
 typedef struct {
     int Year;
     int Month;
     int Day;
-    double DecimalYear; /* decimal years */
+    float DecimalYear; /* decimal years */
 } MAGtype_Date;
 
 typedef struct {
-    double *Pcup; /* Legendre Function */
-    double *dPcup; /* Derivative of Legendre fcn */
+    float *Pcup; /* Legendre Function */
+    float *dPcup; /* Derivative of Legendre fcn */
 } MAGtype_LegendreFunction;
 
 typedef struct {
-    double Bx; /* North */
-    double By; /* East */
-    double Bz; /* Down */
+    float Bx; /* North */
+    float By; /* East */
+    float Bz; /* Down */
 } MAGtype_MagneticResults;
 
 typedef struct {
-    double *RelativeRadiusPower; /* [earth_reference_radius_km / sph. radius ]^n  */
-    double *cos_mlambda; /*cp(m)  - cosine of (m*spherical coord. longitude)*/
-    double *sin_mlambda; /* sp(m)  - sine of (m*spherical coord. longitude) */
+    float *RelativeRadiusPower; /* [earth_reference_radius_km / sph. radius ]^n  */
+    float *cos_mlambda; /*cp(m)  - cosine of (m*spherical coord. longitude)*/
+    float *sin_mlambda; /* sp(m)  - sine of (m*spherical coord. longitude) */
 } MAGtype_SphericalHarmonicVariables;
 
 typedef struct {
-    double Decl; /* 1. Angle between the magnetic field vector and true north, positive east*/
-    double Incl; /*2. Angle between the magnetic field vector and the horizontal plane, positive down*/
-    double F; /*3. Magnetic Field Strength*/
-    double H; /*4. Horizontal Magnetic Field Strength*/
-    double X; /*5. Northern component of the magnetic field vector*/
-    double Y; /*6. Eastern component of the magnetic field vector*/
-    double Z; /*7. Downward component of the magnetic field vector*/
-    double GV; /*8. The Grid Variation*/
-    double Decldot; /*9. Yearly Rate of change in declination*/
-    double Incldot; /*10. Yearly Rate of change in inclination*/
-    double Fdot; /*11. Yearly rate of change in Magnetic field strength*/
-    double Hdot; /*12. Yearly rate of change in horizontal field strength*/
-    double Xdot; /*13. Yearly rate of change in the northern component*/
-    double Ydot; /*14. Yearly rate of change in the eastern component*/
-    double Zdot; /*15. Yearly rate of change in the downward component*/
-    double GVdot; /*16. Yearly rate of change in grid variation*/
+    float Decl; /* 1. Angle between the magnetic field vector and true north, positive east*/
+    float Incl; /*2. Angle between the magnetic field vector and the horizontal plane, positive down*/
+    float F; /*3. Magnetic Field Strength*/
+    float H; /*4. Horizontal Magnetic Field Strength*/
+    float X; /*5. Northern component of the magnetic field vector*/
+    float Y; /*6. Eastern component of the magnetic field vector*/
+    float Z; /*7. Downward component of the magnetic field vector*/
+    float GV; /*8. The Grid Variation*/
+    float Decldot; /*9. Yearly Rate of change in declination*/
+    float Incldot; /*10. Yearly Rate of change in inclination*/
+    float Fdot; /*11. Yearly rate of change in Magnetic field strength*/
+    float Hdot; /*12. Yearly rate of change in horizontal field strength*/
+    float Xdot; /*13. Yearly rate of change in the northern component*/
+    float Ydot; /*14. Yearly rate of change in the eastern component*/
+    float Zdot; /*15. Yearly rate of change in the downward component*/
+    float GVdot; /*16. Yearly rate of change in grid variation*/
 } MAGtype_GeoMagneticElements;
 
 typedef struct {
@@ -202,13 +202,13 @@ typedef struct {
 } MAGtype_CoordGeodeticStr;
 
 typedef struct {
-    double Easting; /* (X) in meters*/
-    double Northing; /* (Y) in meters */
+    float Easting; /* (X) in meters*/
+    float Northing; /* (Y) in meters */
     int Zone; /*UTM Zone*/
     char HemiSphere;
-    double CentralMeridian;
-    double ConvergenceOfMeridians;
-    double PointScale;
+    float CentralMeridian;
+    float ConvergenceOfMeridians;
+    float PointScale;
 } MAGtype_UTMParameters;
 
 enum PARAMS {
@@ -264,7 +264,7 @@ void MAG_Error(int control);
 
 int MAG_ValidateDMSstring(char *input, int min, int max, char *Error);
 
-int MAG_Warnings(int control, double value, MAGtype_MagneticModel *MagneticModel);
+int MAG_Warnings(int control, float value, MAGtype_MagneticModel *MagneticModel);
 
 /*Memory and File Processing*/
 
@@ -309,29 +309,29 @@ int MAG_CalculateSecularVariationElements(MAGtype_MagneticResults MagneticVariat
 
 int MAG_CalculateGridVariation(MAGtype_CoordGeodetic location, MAGtype_GeoMagneticElements *elements);
 
-void MAG_DegreeToDMSstring(double DegreesOfArc, int UnitDepth, char *DMSstring);
+void MAG_DegreeToDMSstring(float DegreesOfArc, int UnitDepth, char *DMSstring);
 
-void MAG_DMSstringToDegree(char *DMSstring, double *DegreesOfArc);
+void MAG_DMSstringToDegree(char *DMSstring, float *DegreesOfArc);
 
 int MAG_GeodeticToSpherical(MAGtype_Ellipsoid Ellip, MAGtype_CoordGeodetic CoordGeodetic, MAGtype_CoordSpherical *CoordSpherical);
 
 int MAG_GetTransverseMercator(MAGtype_CoordGeodetic CoordGeodetic, MAGtype_UTMParameters *UTMParameters);
 
-int MAG_GetUTMParameters(double Latitude,
-        double Longitude,
+int MAG_GetUTMParameters(float Latitude,
+        float Longitude,
         int *Zone,
         char *Hemisphere,
-        double *CentralMeridian);
+        float *CentralMeridian);
 
 int MAG_RotateMagneticVector(MAGtype_CoordSpherical,
         MAGtype_CoordGeodetic CoordGeodetic,
         MAGtype_MagneticResults MagneticResultsSph,
         MAGtype_MagneticResults *MagneticResultsGeo);
 
-void MAG_TMfwd4(double Eps, double Epssq, double K0R4, double K0R4oa,
-        double Acoeff[], double Lam0, double K0, double falseE,
-        double falseN, int XYonly, double Lambda, double Phi,
-        double *X, double *Y, double *pscale, double *CoM);  
+void MAG_TMfwd4(float Eps, float Epssq, float K0R4, float K0R4oa,
+        float Acoeff[], float Lam0, float K0, float falseE,
+        float falseN, int XYonly, float Lambda, float Phi,
+        float *X, float *Y, float *pscale, float *CoM);  
 
 
 /*Spherical Harmonics*/
@@ -343,9 +343,9 @@ int MAG_ComputeSphericalHarmonicVariables(MAGtype_Ellipsoid Ellip,
         int nMax,
         MAGtype_SphericalHarmonicVariables * SphVariables);
 
-int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax);
+int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax);
 
-int MAG_PcupLow(double *Pcup, double *dPcup, double x, int nMax);
+int MAG_PcupLow(float *Pcup, float *dPcup, float x, int nMax);
 
 int MAG_SecVarSummation(MAGtype_LegendreFunction *LegendreFunction,
         MAGtype_MagneticModel *MagneticModel,
@@ -387,7 +387,7 @@ int MAG_ConvertGeoidToEllipsoidHeight(MAGtype_CoordGeodetic *CoordGeodetic, MAGt
  *
  */
 
-int MAG_GetGeoidHeight(double Latitude, double Longitude, double *DeltaHeight, MAGtype_Geoid *Geoid);
+int MAG_GetGeoidHeight(float Latitude, float Longitude, float *DeltaHeight, MAGtype_Geoid *Geoid);
 /*
  * The private function Get_Geoid_Height returns the height of the
  * WGS84 geiod above or below the WGS84 ellipsoid,
@@ -400,12 +400,12 @@ int MAG_GetGeoidHeight(double Latitude, double Longitude, double *DeltaHeight, M
  *
  */
 
-void MAG_EquivalentLatLon(double lat, double lon, double *repairedLat, double  *repairedLon);
+void MAG_EquivalentLatLon(float lat, float lon, float *repairedLat, float  *repairedLon);
 
-void MAG_WMMErrorCalc(double H, MAGtype_GeoMagneticElements *Uncertainty);
+void MAG_WMMErrorCalc(float H, MAGtype_GeoMagneticElements *Uncertainty);
 
 // Yale addition
-int ingestPoint(double lat, double lon, double alt, double year, MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate);
+int ingestPoint(float lat, float lon, float alt, float year, MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate);
 int calculateMagneticField(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate, MAGtype_GeoMagneticElements *GeoMagneticElements, MAGtype_GeoMagneticElements *Errors);
 int MAG_SetElipseDefaults(MAGtype_Ellipsoid *Ellip);
 

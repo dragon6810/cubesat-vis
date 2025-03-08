@@ -81,11 +81,13 @@ float VectorLength(vec3_t v)
     int i;
 
     float len;
+    float ret;
 
     for(i=0, len=0; i<3; i++)
         len += v[i] * v[i];
 
-    return sqrtf(len);
+    arm_sqrt_f32(len, &ret);
+    return ret;
 }
 
 void VectorNormalize(vec3_t dest, vec3_t v)
@@ -791,7 +793,7 @@ void render(void)
     nk_glfw3_render(NK_ANTI_ALIASING_OFF);
 }
 
-static void cursorposcallback(GLFWwindow* win, double x, double y)
+void cursorposcallback(GLFWwindow* win, double x, double y)
 {
     int w, h;
 

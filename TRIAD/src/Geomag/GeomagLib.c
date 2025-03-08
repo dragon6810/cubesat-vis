@@ -109,9 +109,9 @@ INPUT: Ellip
 
 OUTPUT : GeoMagneticElements
 
-CALLS:  	MAG_AllocateLegendreFunctionMemory(NumTerms);  ( For storing the ALF functions )
+CALLS:  	MAG_AllocateLegendreFunctionMemory(NumTerms);  ( For storing the Af functions )
                      MAG_ComputeSphericalHarmonicVariables( Ellip, CoordSpherical, TimedMagneticModel->nMax, &SphVariables); (Compute Spherical Harmonic variables  )
-                     MAG_AssociatedLegendreFunction(CoordSpherical, TimedMagneticModel->nMax, LegendreFunction);  	Compute ALF
+                     MAG_AssociatedLegendreFunction(CoordSpherical, TimedMagneticModel->nMax, LegendreFunction);  	Compute Af
                      MAG_Summation(LegendreFunction, TimedMagneticModel, SphVariables, CoordSpherical, &MagneticResultsSph);  Accumulate the spherical harmonic coefficients
                      MAG_SecVarSummation(LegendreFunction, TimedMagneticModel, SphVariables, CoordSpherical, &MagneticResultsSphVar); Sum the Secular Variation Coefficients
                      MAG_RotateMagneticVector(CoordSpherical, CoordGeodetic, MagneticResultsSph, &MagneticResultsGeo); Map the computed Magnetic fields to Geodetic coordinates
@@ -126,10 +126,10 @@ CALLS:  	MAG_AllocateLegendreFunctionMemory(NumTerms);  ( For storing the ALF fu
     MAGtype_MagneticResults MagneticResultsSph, MagneticResultsGeo, MagneticResultsSphVar, MagneticResultsGeoVar;
 
     NumTerms = ((TimedMagneticModel->nMax + 1) * (TimedMagneticModel->nMax + 2) / 2); 
-    LegendreFunction = MAG_AllocateLegendreFunctionMemory(NumTerms); /* For storing the ALF functions */
+    LegendreFunction = MAG_AllocateLegendreFunctionMemory(NumTerms); /* For storing the Af functions */
     SphVariables = MAG_AllocateSphVarMemory(TimedMagneticModel->nMax);
     MAG_ComputeSphericalHarmonicVariables(Ellip, CoordSpherical, TimedMagneticModel->nMax, SphVariables); /* Compute Spherical Harmonic variables  */
-    MAG_AssociatedLegendreFunction(CoordSpherical, TimedMagneticModel->nMax, LegendreFunction); /* Compute ALF  */
+    MAG_AssociatedLegendreFunction(CoordSpherical, TimedMagneticModel->nMax, LegendreFunction); /* Compute Af  */
     MAG_Summation(LegendreFunction, TimedMagneticModel, *SphVariables, CoordSpherical, &MagneticResultsSph); /* Accumulate the spherical harmonic coefficients*/
     MAG_SecVarSummation(LegendreFunction, TimedMagneticModel, *SphVariables, CoordSpherical, &MagneticResultsSphVar); /*Sum the Secular Variation Coefficients  */
     MAG_RotateMagneticVector(CoordSpherical, CoordGeodetic, MagneticResultsSph, &MagneticResultsGeo); /* Map the computed Magnetic fields to Geodeitic coordinates  */
@@ -147,12 +147,12 @@ int MAG_robustReadMagModels(char *filename, MAGtype_MagneticModel *(*magneticmod
 {
     char line[MAXLINELENGTH];
     int n, nMax = 0, num_terms, a;
-    FILE *MODELFILE;
-    MODELFILE = fopen(filename, "r");
-    if(MODELFILE == 0) {
+    FILE *MODEfILE;
+    MODEfILE = fopen(filename, "r");
+    if(MODEfILE == 0) {
         return 0;
     }
-    if (NULL==fgets(line, MAXLINELENGTH, MODELFILE)){
+    if (NULL==fgets(line, MAXLINELENGTH, MODEfILE)){
         return 0;
     }
     if(line[0] == '%'){
@@ -163,7 +163,7 @@ int MAG_robustReadMagModels(char *filename, MAGtype_MagneticModel *(*magneticmod
 
         do
         {
-            if(NULL == fgets(line, MAXLINELENGTH, MODELFILE))
+            if(NULL == fgets(line, MAXLINELENGTH, MODEfILE))
                 break;
             a = sscanf(line, "%d", &n);
             if(n > nMax && (n < 99999 && a == 1 && n > 0))
@@ -177,7 +177,7 @@ int MAG_robustReadMagModels(char *filename, MAGtype_MagneticModel *(*magneticmod
         (*magneticmodels)[0]->CoefficientFileEndDate = (*magneticmodels)[0]->epoch + 5;
 
     } else return 0;
-    fclose(MODELFILE);
+    fclose(MODEfILE);
     return 1;
 } /*MAG_robustReadMagModels*/
 
@@ -290,8 +290,8 @@ MAGtype_LegendreFunction *MAG_AllocateLegendreFunctionMemory(int NumTerms)
 
 
  OUTPUT:    Pointer to data structure MAGtype_LegendreFunction with the following elements
-                        double *Pcup;  (  pointer to store Legendre Function  )
-                        double *dPcup; ( pointer to store  Derivative of Legendre function )
+                        float *Pcup;  (  pointer to store Legendre Function  )
+                        float *dPcup; ( pointer to store  Derivative of Legendre function )
 
                         FALSE: Failed to allocate memory
 
@@ -308,13 +308,13 @@ CALLS : none
         MAG_Error(1);
         return NULL;
     }
-    LegendreFunction->Pcup = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    LegendreFunction->Pcup = (float *) malloc((NumTerms + 1) * sizeof ( float));
     if(LegendreFunction->Pcup == 0)
     {
         MAG_Error(1);
         return NULL;
     }
-    LegendreFunction->dPcup = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    LegendreFunction->dPcup = (float *) malloc((NumTerms + 1) * sizeof ( float));
     if(LegendreFunction->dPcup == 0)
     {
         MAG_Error(1);
@@ -332,13 +332,13 @@ MAGtype_MagneticModel *MAG_AllocateModelMemory(int NumTerms)
 
 
  OUTPUT:    Pointer to data structure MAGtype_MagneticModel with the following elements
-                        double EditionDate;
-                        double epoch;       Base time of Geomagnetic model epoch (yrs)
+                        float EditionDate;
+                        float epoch;       Base time of Geomagnetic model epoch (yrs)
                         char  ModelName[20];
-                        double *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                        double *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                        double *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        double *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                        float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
+                        float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
+                        float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                        float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
                         int nMax;  Maximum degree of spherical harmonic model
                         int nMaxSecVar; Maxumum degree of spherical harmonic secular model
                         int SecularVariationUsed; Whether or not the magnetic secular variation vector will be needed by program
@@ -359,7 +359,7 @@ CALLS : none
         return NULL;
     }
 
-    MagneticModel->Main_Field_Coeff_G = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    MagneticModel->Main_Field_Coeff_G = (float *) malloc((NumTerms + 1) * sizeof ( float));
 
     if(MagneticModel->Main_Field_Coeff_G == NULL)
     {
@@ -367,20 +367,20 @@ CALLS : none
         return NULL;
     }
 
-    MagneticModel->Main_Field_Coeff_H = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    MagneticModel->Main_Field_Coeff_H = (float *) malloc((NumTerms + 1) * sizeof ( float));
 
     if(MagneticModel->Main_Field_Coeff_H == NULL)
     {
         MAG_Error(2);
         return NULL;
     }
-    MagneticModel->Secular_Var_Coeff_G = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    MagneticModel->Secular_Var_Coeff_G = (float *) malloc((NumTerms + 1) * sizeof ( float));
     if(MagneticModel->Secular_Var_Coeff_G == NULL)
     {
         MAG_Error(2);
         return NULL;
     }
-    MagneticModel->Secular_Var_Coeff_H = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    MagneticModel->Secular_Var_Coeff_H = (float *) malloc((NumTerms + 1) * sizeof ( float));
     if(MagneticModel->Secular_Var_Coeff_H == NULL)
     {
         MAG_Error(2);
@@ -409,9 +409,9 @@ MAGtype_SphericalHarmonicVariables* MAG_AllocateSphVarMemory(int nMax)
 {
     MAGtype_SphericalHarmonicVariables* SphVariables;
     SphVariables  = (MAGtype_SphericalHarmonicVariables*) calloc(1, sizeof(MAGtype_SphericalHarmonicVariables));
-    SphVariables->RelativeRadiusPower = (double *) malloc((nMax + 1) * sizeof ( double));
-    SphVariables->cos_mlambda = (double *) malloc((nMax + 1) * sizeof (double));
-    SphVariables->sin_mlambda = (double *) malloc((nMax + 1) * sizeof (double));
+    SphVariables->RelativeRadiusPower = (float *) malloc((nMax + 1) * sizeof ( float));
+    SphVariables->cos_mlambda = (float *) malloc((nMax + 1) * sizeof (float));
+    SphVariables->sin_mlambda = (float *) malloc((nMax + 1) * sizeof (float));
     return SphVariables;
 } /*MAG_AllocateSphVarMemory*/
 
@@ -473,21 +473,21 @@ int MAG_FreeMemory(MAGtype_MagneticModel *MagneticModel, MAGtype_MagneticModel *
 /* Free memory used by WMM functions. Only to be called at the end of the main function.
 INPUT :  MagneticModel	pointer to data structure with the following elements
 
-                        double EditionDate;
-                        double epoch;       Base time of Geomagnetic model epoch (yrs)
+                        float EditionDate;
+                        float epoch;       Base time of Geomagnetic model epoch (yrs)
                         char  ModelName[20];
-                        double *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                        double *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                        double *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        double *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                        float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
+                        float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
+                        float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                        float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
                         int nMax;  Maximum degree of spherical harmonic model
                         int nMaxSecVar; Maxumum degree of spherical harmonic secular model
                         int SecularVariationUsed; Whether or not the magnetic secular variation vector will be needed by program
 
                 TimedMagneticModel 	Pointer to data structure similar to the first input.
                 LegendreFunction Pointer to data structure with the following elements
-                                                double *Pcup;  (  pointer to store Legendre Function  )
-                                                double *dPcup; ( pointer to store  Derivative of Lagendre function )
+                                                float *Pcup;  (  pointer to store Legendre Function  )
+                                                float *dPcup; ( pointer to store  Derivative of Lagendre function )
 
 OUTPUT  none
 CALLS : none
@@ -571,13 +571,13 @@ int MAG_FreeMagneticModelMemory(MAGtype_MagneticModel *MagneticModel)
 /* Free the magnetic model memory used by WMM functions.
 INPUT :  MagneticModel	pointer to data structure with the following elements
 
-                        double EditionDate;
-                        double epoch;       Base time of Geomagnetic model epoch (yrs)
+                        float EditionDate;
+                        float epoch;       Base time of Geomagnetic model epoch (yrs)
                         char  ModelName[20];
-                        double *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                        double *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                        double *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        double *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                        float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
+                        float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
+                        float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                        float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
                         int nMax;  Maximum degree of spherical harmonic model
                         int nMaxSecVar; Maxumum degree of spherical harmonic secular model
                         int SecularVariationUsed; Whether or not the magnetic secular variation vector will be needed by program
@@ -620,8 +620,8 @@ int MAG_FreeLegendreMemory(MAGtype_LegendreFunction *LegendreFunction)
 
 /* Free the Legendre Coefficients memory used by the WMM functions.
 INPUT : LegendreFunction Pointer to data structure with the following elements
-                                                double *Pcup;  (  pointer to store Legendre Function  )
-                                                double *dPcup; ( pointer to store  Derivative of Lagendre function )
+                                                float *Pcup;  (  pointer to store Legendre Function  )
+                                                float *dPcup; ( pointer to store  Derivative of Lagendre function )
 
 OUTPUT: none
 CALLS : none
@@ -651,9 +651,9 @@ int MAG_FreeSphVarMemory(MAGtype_SphericalHarmonicVariables *SphVar)
 
 /* Free the Spherical Harmonic Variable memory used by the WMM functions.
 INPUT : LegendreFunction Pointer to data structure with the following elements
-                                                double *RelativeRadiusPower
-                                                double *cos_mlambda
-                                                double *sin_mlambda
+                                                float *RelativeRadiusPower
+                                                float *cos_mlambda
+                                                float *sin_mlambda
  OUTPUT: none
  CALLS : none
  */
@@ -691,11 +691,11 @@ int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel * MagneticModel)
                                     nMax : 	Number of static coefficients
        UPDATES : MagneticModel : Pointer to the data structure with the following fields populated
                                     char  *ModelName;
-                                    double epoch;       Base time of Geomagnetic model epoch (yrs)
-                                    double *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                                    double *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                                    double *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                                    double *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                                    float epoch;       Base time of Geomagnetic model epoch (yrs)
+                                    float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
+                                    float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
+                                    float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                                    float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
             CALLS : none
 
      */
@@ -703,7 +703,7 @@ int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel * MagneticModel)
     FILE *MAG_COF_File;
     char c_str[81], c_new[5]; /*these strings are used to read a line from coefficient file*/
     int i, icomp, m, n, EOF_Flag = 0, index;
-    double epoch, gnm, hnm, dgnm, dhnm;
+    float epoch, gnm, hnm, dgnm, dhnm;
     MAG_COF_File = fopen(filename, "r");
     
     if(MAG_COF_File == NULL)
@@ -717,7 +717,7 @@ int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel * MagneticModel)
     MagneticModel->Secular_Var_Coeff_H[0] = 0.0;
     MagneticModel->Secular_Var_Coeff_G[0] = 0.0;
     fgets(c_str, 80, MAG_COF_File);
-    sscanf(c_str, "%lf%s", &epoch, MagneticModel->ModelName);
+    sscanf(c_str, "%f%s", &epoch, MagneticModel->ModelName);
     MagneticModel->epoch = epoch;
     while(EOF_Flag == 0)
     {
@@ -737,7 +737,7 @@ int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel * MagneticModel)
             break;
         }
         /* END OF FILE NOT ENCOUNTERED, GET VALUES */
-        sscanf(c_str, "%d%d%lf%lf%lf%lf", &n, &m, &gnm, &hnm, &dgnm, &dhnm);
+        sscanf(c_str, "%d%d%f%f%f%f", &n, &m, &gnm, &hnm, &dgnm, &dhnm);
         if(m <= n)
         {
             index = (n * (n + 1) / 2 + m);
@@ -762,11 +762,11 @@ int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_Magnet
                                 nMaxSecVar : Number of secular variation coefficients
                                 nMax : 	Number of static coefficients
    UPDATES : MagneticModel : Pointer to the data structure with the following fields populated
-                                double epoch;       Base time of Geomagnetic model epoch (yrs)
-                                double *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                                double *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                                double *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                                double *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                                float epoch;       Base time of Geomagnetic model epoch (yrs)
+                                float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
+                                float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
+                                float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
+                                float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
         CALLS : none
 
  */
@@ -775,7 +775,7 @@ int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_Magnet
     FILE *MAG_COFSV_File;
     char c_str[81], c_str2[81]; /* these strings are used to read a line from coefficient file */
     int i, m, n, index, a, b;
-    double epoch, gnm, hnm, dgnm, dhnm;
+    float epoch, gnm, hnm, dgnm, dhnm;
     MAG_COF_File = fopen(filename, "r");
     MAG_COFSV_File = fopen(filenameSV, "r");
     if(MAG_COF_File == NULL || MAG_COFSV_File == NULL)
@@ -792,7 +792,7 @@ int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_Magnet
         fclose(MAG_COFSV_File);
         return FALSE;
     }
-    sscanf(c_str, "%lf%s", &epoch, MagneticModel->ModelName);
+    sscanf(c_str, "%f%s", &epoch, MagneticModel->ModelName);
     MagneticModel->epoch = epoch;
     a = CALCULATE_NUMTERMS(MagneticModel->nMaxSecVar);
     b = CALCULATE_NUMTERMS(MagneticModel->nMax);
@@ -803,13 +803,13 @@ int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_Magnet
             fclose(MAG_COFSV_File);
             return FALSE;
         }
-        sscanf(c_str, "%d%d%lf%lf", &n, &m, &gnm, &hnm);
+        sscanf(c_str, "%d%d%f%f", &n, &m, &gnm, &hnm);
         if (NULL == fgets(c_str2, 80, MAG_COFSV_File)){
             fclose(MAG_COF_File);
             fclose(MAG_COFSV_File);
             return FALSE;
         }
-        sscanf(c_str2, "%d%d%lf%lf", &n, &m, &dgnm, &dhnm);
+        sscanf(c_str2, "%d%d%f%f", &n, &m, &dgnm, &dhnm);
         if(m <= n)
         {
             index = (n * (n + 1) / 2 + m);
@@ -826,7 +826,7 @@ int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_Magnet
             fclose(MAG_COFSV_File);
             return FALSE;
         }
-        sscanf(c_str, "%d%d%lf%lf", &n, &m, &gnm, &hnm);
+        sscanf(c_str, "%d%d%f%f", &n, &m, &gnm, &hnm);
         if(m <= n)
         {
             index = (n * (n + 1) / 2 + m);
@@ -897,7 +897,7 @@ int MAG_readMagneticModel_SHDF(char *filename, MAGtype_MagneticModel *(*magnetic
 
     /* For reading coefficients */
     int n, m;
-    double gnm, hnm, dgnm, dhnm, cutoff;
+    float gnm, hnm, dgnm, dhnm, cutoff;
     int index;
     
     FILE *stream;
@@ -966,11 +966,11 @@ int MAG_readMagneticModel_SHDF(char *filename, MAGtype_MagneticModel *(*magnetic
         {
             if(m == 0)
             {
-                sscanf(line, "%c,%d,%d,%lf,,%lf,", &coefftype, &n, &m, &gnm, &dgnm);
+                sscanf(line, "%c,%d,%d,%f,,%f,", &coefftype, &n, &m, &gnm, &dgnm);
                 hnm = 0;
                 dhnm = 0;
             } else
-                sscanf(line, "%c,%d,%d,%lf,%lf,%lf,%lf", &coefftype, &n, &m, &gnm, &hnm, &dgnm, &dhnm);
+                sscanf(line, "%c,%d,%d,%f,%f,%f,%f", &coefftype, &n, &m, &gnm, &hnm, &dgnm, &dhnm);
             newrecord = 1;
             if(!allocationflag)
             {
@@ -1034,17 +1034,17 @@ int MAG_CalculateGeoMagneticElements(MAGtype_MagneticResults *MagneticResultsGeo
 
 /* Calculate all the Geomagnetic elements from X,Y and Z components
 INPUT     MagneticResultsGeo   Pointer to data structure with the following elements
-                        double Bx;    ( North )
-                        double By;	  ( East )
-                        double Bz;    ( Down )
+                        float Bx;    ( North )
+                        float By;	  ( East )
+                        float Bz;    ( Down )
 OUTPUT    GeoMagneticElements    Pointer to data structure with the following elements
-                        double Decl; (Angle between the magnetic field vector and true north, positive east)
-                        double Incl; Angle between the magnetic field vector and the horizontal plane, positive down
-                        double F; Magnetic Field Strength
-                        double H; Horizontal Magnetic Field Strength
-                        double X; Northern component of the magnetic field vector
-                        double Y; Eastern component of the magnetic field vector
-                        double Z; Downward component of the magnetic field vector
+                        float Decl; (Angle between the magnetic field vector and true north, positive east)
+                        float Incl; Angle between the magnetic field vector and the horizontal plane, positive down
+                        float F; Magnetic Field Strength
+                        float H; Horizontal Magnetic Field Strength
+                        float X; Northern component of the magnetic field vector
+                        float Y; Eastern component of the magnetic field vector
+                        float Z; Downward component of the magnetic field vector
 CALLS : none
  */
 {
@@ -1071,12 +1071,12 @@ variation in UTM projection system. However, the UTM projection codes may be use
 the grid variation at any latitudes.
 
 INPUT    location    Data structure with the following elements
-                double lambda; (longitude)
-                double phi; ( geodetic latitude)
-                double HeightAboveEllipsoid; (height above the ellipsoid (HaE) )
-                double HeightAboveGeoid;(height above the Geoid )
+                float lambda; (longitude)
+                float phi; ( geodetic latitude)
+                float HeightAboveEllipsoid; (height above the ellipsoid (HaE) )
+                float HeightAboveGeoid;(height above the Geoid )
 OUTPUT  elements Data  structure with the following elements updated
-                double GV; ( The Grid Variation )
+                float GV; ( The Grid Variation )
 CALLS : MAG_GetTransverseMercator
 
  */
@@ -1101,18 +1101,18 @@ CALLS : MAG_GetTransverseMercator
 int MAG_CalculateSecularVariationElements(MAGtype_MagneticResults MagneticVariation, MAGtype_GeoMagneticElements *MagneticElements)
 /*This takes the Magnetic Variation in x, y, and z and uses it to calculate the secular variation of each of the Geomagnetic elements.
         INPUT     MagneticVariation   Data structure with the following elements
-                                double Bx;    ( North )
-                                double By;	  ( East )
-                                double Bz;    ( Down )
+                                float Bx;    ( North )
+                                float By;	  ( East )
+                                float Bz;    ( Down )
         OUTPUT   MagneticElements   Pointer to the data  structure with the following elements updated
-                        double Decldot; Yearly Rate of change in declination
-                        double Incldot; Yearly Rate of change in inclination
-                        double Fdot; Yearly rate of change in Magnetic field strength
-                        double Hdot; Yearly rate of change in horizontal field strength
-                        double Xdot; Yearly rate of change in the northern component
-                        double Ydot; Yearly rate of change in the eastern component
-                        double Zdot; Yearly rate of change in the downward component
-                        double GVdot;Yearly rate of chnage in grid variation
+                        float Decldot; Yearly Rate of change in declination
+                        float Incldot; Yearly Rate of change in inclination
+                        float Fdot; Yearly rate of change in Magnetic field strength
+                        float Hdot; Yearly rate of change in horizontal field strength
+                        float Xdot; Yearly rate of change in the northern component
+                        float Ydot; Yearly rate of change in the eastern component
+                        float Zdot; Yearly rate of change in the downward component
+                        float GVdot;Yearly rate of chnage in grid variation
         CALLS : none
 
  */
@@ -1128,7 +1128,7 @@ int MAG_CalculateSecularVariationElements(MAGtype_MagneticResults MagneticVariat
     return TRUE;
 } /*MAG_CalculateSecularVariationElements*/
 
-void MAG_DegreeToDMSstring(double DegreesOfArc, int UnitDepth, char *DMSstring)
+void MAG_DegreeToDMSstring(float DegreesOfArc, int UnitDepth, char *DMSstring)
 
 /*This converts a given decimal degree into a DMS string.
 INPUT  DegreesOfArc   decimal degree
@@ -1141,7 +1141,7 @@ CALLS : none
  */
 {
     int DMS[3], i;
-    double temp = DegreesOfArc;
+    float temp = DegreesOfArc;
     char tempstring[36] = "";
     char tempstring2[32] = "";
     strcpy(DMSstring, "");
@@ -1171,7 +1171,7 @@ CALLS : none
     }
 } /*MAG_DegreeToDMSstring*/
 
-void MAG_DMSstringToDegree(char *DMSstring, double *DegreesOfArc)
+void MAG_DMSstringToDegree(char *DMSstring, float *DegreesOfArc)
 
 /*This converts a given DMS string into decimal degrees.
 INPUT  DMSstring 	 pointer to DMSString
@@ -1194,29 +1194,29 @@ int MAG_GeodeticToSpherical(MAGtype_Ellipsoid Ellip, MAGtype_CoordGeodetic Coord
 /* Converts Geodetic coordinates to Spherical coordinates
 
   INPUT   Ellip  data  structure with the following elements
-                        double a; semi-major axis of the ellipsoid
-                        double b; semi-minor axis of the ellipsoid
-                        double fla;  flattening
-                        double epssq; first eccentricity squared
-                        double eps;  first eccentricity
-                        double re; mean radius of  ellipsoid
+                        float a; semi-major axis of the ellipsoid
+                        float b; semi-minor axis of the ellipsoid
+                        float fla;  flattening
+                        float epssq; first eccentricity squared
+                        float eps;  first eccentricity
+                        float re; mean radius of  ellipsoid
 
                 CoordGeodetic  Pointer to the  data  structure with the following elements updates
-                        double lambda; ( longitude )
-                        double phi; ( geodetic latitude )
-                        double HeightAboveEllipsoid; ( height above the WGS84 ellipsoid (HaE) )
-                        double HeightAboveGeoid; (height above the EGM96 Geoid model )
+                        float lambda; ( longitude )
+                        float phi; ( geodetic latitude )
+                        float HeightAboveEllipsoid; ( height above the WGS84 ellipsoid (HaE) )
+                        float HeightAboveGeoid; (height above the EGM96 Geoid model )
 
  OUTPUT		CoordSpherical 	Pointer to the data structure with the following elements
-                        double lambda; ( longitude)
-                        double phig; ( geocentric latitude )
-                        double r;  	  ( distance from the center of the ellipsoid)
+                        float lambda; ( longitude)
+                        float phig; ( geocentric latitude )
+                        float r;  	  ( distance from the center of the ellipsoid)
 
 CALLS : none
 
  */
 {
-    double CosLat, SinLat, rc, xp, zp; /*all local variables */
+    float CosLat, SinLat, rc, xp, zp; /*all local variables */
 
     /*
      ** Convert geodetic coordinates, (defined by the WGS-84
@@ -1250,23 +1250,23 @@ int MAG_GetTransverseMercator(MAGtype_CoordGeodetic CoordGeodetic, MAGtype_UTMPa
 
 INPUT: CoordGeodetic : Data structure MAGtype_CoordGeodetic.
 OUTPUT : UTMParameters : Pointer to data structure MAGtype_UTMParameters with the following elements
-                     double Easting;  (X) in meters
-                     double Northing; (Y) in meters
+                     float Easting;  (X) in meters
+                     float Northing; (Y) in meters
                      int Zone; UTM Zone
                      char HemiSphere ;
-                     double CentralMeridian; Longitude of the Central Meridian of the UTM Zone
-                     double ConvergenceOfMeridians;  Convergence of Meridians
-                     double PointScale;
+                     float CentralMeridian; Longitude of the Central Meridian of the UTM Zone
+                     float ConvergenceOfMeridians;  Convergence of Meridians
+                     float PointScale;
  */
 {
 
-    double Eps, Epssq;
-    double Acoeff[8];
-    double Lam0, K0, falseE, falseN;
-    double K0R4, K0R4oa;
-    double Lambda, Phi;
+    float Eps, Epssq;
+    float Acoeff[8];
+    float Lam0, K0, falseE, falseN;
+    float K0R4, K0R4oa;
+    float Lambda, Phi;
     int XYonly;
-    double X, Y, pscale, CoM;
+    float X, Y, pscale, CoM;
     int Zone;
     char Hemisphere;
 
@@ -1337,11 +1337,11 @@ OUTPUT : UTMParameters : Pointer to data structure MAGtype_UTMParameters with th
     return 0;
 } /*MAG_GetTransverseMercator*/
 
-int MAG_GetUTMParameters(double Latitude,
-        double Longitude,
+int MAG_GetUTMParameters(float Latitude,
+        float Longitude,
         int *Zone,
         char *Hemisphere,
-        double *CentralMeridian)
+        float *CentralMeridian)
 {
     /*
      * The function MAG_GetUTMParameters converts geodetic (latitude and
@@ -1422,31 +1422,31 @@ Manoj Nair, June, 2009 Manoj.C.Nair@Noaa.Gov
 Equation 16, WMM Technical report
 
 INPUT : CoordSpherical : Data structure MAGtype_CoordSpherical with the following elements
-                        double lambda; ( longitude)
-                        double phig; ( geocentric latitude )
-                        double r;  	  ( distance from the center of the ellipsoid)
+                        float lambda; ( longitude)
+                        float phig; ( geocentric latitude )
+                        float r;  	  ( distance from the center of the ellipsoid)
 
                 CoordGeodetic : Data structure MAGtype_CoordGeodetic with the following elements
-                        double lambda; (longitude)
-                        double phi; ( geodetic latitude)
-                        double HeightAboveEllipsoid; (height above the ellipsoid (HaE) )
-                        double HeightAboveGeoid;(height above the Geoid )
+                        float lambda; (longitude)
+                        float phi; ( geodetic latitude)
+                        float HeightAboveEllipsoid; (height above the ellipsoid (HaE) )
+                        float HeightAboveGeoid;(height above the Geoid )
 
                 MagneticResultsSph : Data structure MAGtype_MagneticResults with the following elements
-                        double Bx;      North
-                        double By;      East
-                        double Bz;      Down
+                        float Bx;      North
+                        float By;      East
+                        float Bz;      Down
 
 OUTPUT: MagneticResultsGeo Pointer to the data structure MAGtype_MagneticResults, with the following elements
-                        double Bx;      North
-                        double By;      East
-                        double Bz;      Down
+                        float Bx;      North
+                        float By;      East
+                        float Bz;      Down
 
 CALLS : none
 
  */
 {
-    double Psi;
+    float Psi;
     /* Difference between the spherical and Geodetic latitudes */
     Psi = (M_PI / 180) * (CoordSpherical.phig - CoordGeodetic.phi);
 
@@ -1457,10 +1457,10 @@ CALLS : none
     return TRUE;
 } /*MAG_RotateMagneticVector*/
 
-void MAG_TMfwd4(double Eps, double Epssq, double K0R4, double K0R4oa,
-        double Acoeff[], double Lam0, double K0, double falseE,
-        double falseN, int XYonly, double Lambda, double Phi,
-        double *X, double *Y, double *pscale, double *CoM)
+void MAG_TMfwd4(float Eps, float Epssq, float K0R4, float K0R4oa,
+        float Acoeff[], float Lam0, float K0, float falseE,
+        float falseN, int XYonly, float Lambda, float Phi,
+        float *X, float *Y, float *pscale, float *CoM)
 {
 
     /*  Transverse Mercator forward equations including point-scale and CoM
@@ -1508,14 +1508,14 @@ void MAG_TMfwd4(double Eps, double Epssq, double K0R4, double K0R4oa,
           CoM          Convergence-of-meridians in radians
      */
 
-    double Lam, CLam, SLam, CPhi, SPhi;
-    double P, part1, part2, denom, CChi, SChi;
-    double U, V;
-    double T, Tsq, denom2;
-    double c2u, s2u, c4u, s4u, c6u, s6u, c8u, s8u;
-    double c2v, s2v, c4v, s4v, c6v, s6v, c8v, s8v;
-    double Xstar, Ystar;
-    double sig1, sig2, comroo;
+    float Lam, CLam, SLam, CPhi, SPhi;
+    float P, part1, part2, denom, CChi, SChi;
+    float U, V;
+    float T, Tsq, denom2;
+    float c2u, s2u, c4u, s4u, c6u, s6u, c8u, s8u;
+    float c2v, s2v, c4v, s4v, c6v, s6v, c8v, s8v;
+    float Xstar, Ystar;
+    float sig1, sig2, comroo;
 
     /*
        Ellipsoid to sphere
@@ -1657,19 +1657,19 @@ int MAG_AssociatedLegendreFunction(MAGtype_CoordSpherical CoordSpherical, int nM
 functions up to degree nMax. If nMax <= 16, function MAG_PcupLow is used.
 Otherwise MAG_PcupHigh is called.
 INPUT  CoordSpherical 	A data structure with the following elements
-                                                double lambda; ( longitude)
-                                                double phig; ( geocentric latitude )
-                                                double r;  	  ( distance from the center of the ellipsoid)
+                                                float lambda; ( longitude)
+                                                float phig; ( geocentric latitude )
+                                                float r;  	  ( distance from the center of the ellipsoid)
                 nMax        	integer 	 ( Maxumum degree of spherical harmonic secular model)
                 LegendreFunction Pointer to data structure with the following elements
-                                                double *Pcup;  (  pointer to store Legendre Function  )
-                                                double *dPcup; ( pointer to store  Derivative of Lagendre function )
+                                                float *Pcup;  (  pointer to store Legendre Function  )
+                                                float *dPcup; ( pointer to store  Derivative of Lagendre function )
 
 OUTPUT  LegendreFunction  Calculated Legendre variables in the data structure
 
  */
 {
-    double sin_phi;
+    float sin_phi;
     int FLAG = 1;
 
     sin_phi = sin(DEG2RAD(CoordSpherical.phig)); /* sin  (geocentric latitude) */
@@ -1690,26 +1690,26 @@ int MAG_ComputeSphericalHarmonicVariables(MAGtype_Ellipsoid Ellip, MAGtype_Coord
        Variables computed are (a/r)^(n+2), cos_m(lamda) and sin_m(lambda) for spherical harmonic
        summations. (Equations 10-12 in the WMM Technical Report)
        INPUT   Ellip  data  structure with the following elements
-                             double a; semi-major axis of the ellipsoid
-                             double b; semi-minor axis of the ellipsoid
-                             double fla;  flattening
-                             double epssq; first eccentricity squared
-                             double eps;  first eccentricity
-                             double re; mean radius of  ellipsoid
+                             float a; semi-major axis of the ellipsoid
+                             float b; semi-minor axis of the ellipsoid
+                             float fla;  flattening
+                             float epssq; first eccentricity squared
+                             float eps;  first eccentricity
+                             float re; mean radius of  ellipsoid
                      CoordSpherical 	A data structure with the following elements
-                             double lambda; ( longitude)
-                             double phig; ( geocentric latitude )
-                             double r;  	  ( distance from the center of the ellipsoid)
+                             float lambda; ( longitude)
+                             float phig; ( geocentric latitude )
+                             float r;  	  ( distance from the center of the ellipsoid)
                      nMax   integer 	 ( Maxumum degree of spherical harmonic secular model)\
 
      OUTPUT  SphVariables  Pointer to the   data structure with the following elements
-             double RelativeRadiusPower[MAG_MAX_MODEL_DEGREES+1];   [earth_reference_radius_km  sph. radius ]^n
-             double cos_mlambda[MAG_MAX_MODEL_DEGREES+1]; cp(m)  - cosine of (mspherical coord. longitude)
-             double sin_mlambda[MAG_MAX_MODEL_DEGREES+1];  sp(m)  - sine of (mspherical coord. longitude)
+             float RelativeRadiusPower[MAG_MAX_MODEL_DEGREES+1];   [earth_reference_radius_km  sph. radius ]^n
+             float cos_mlambda[MAG_MAX_MODEL_DEGREES+1]; cp(m)  - cosine of (mspherical coord. longitude)
+             float sin_mlambda[MAG_MAX_MODEL_DEGREES+1];  sp(m)  - sine of (mspherical coord. longitude)
      CALLS : none
  */
 {
-    double cos_lambda, sin_lambda;
+    float cos_lambda, sin_lambda;
     int m, n;
     cos_lambda = cos(DEG2RAD(CoordSpherical.lambda));
     sin_lambda = sin(DEG2RAD(CoordSpherical.lambda));
@@ -1739,7 +1739,7 @@ int MAG_ComputeSphericalHarmonicVariables(MAGtype_Ellipsoid Ellip, MAGtype_Coord
     return TRUE;
 } /*MAG_ComputeSphericalHarmonicVariables*/
 
-int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
+int MAG_PcupHigh(float *Pcup, float *dPcup, float x, int nMax)
 
 /*	This function evaluates all of the Schmidt-semi normalized associated Legendre
         functions up to degree nMax. The functions are initially scaled by
@@ -1774,7 +1774,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
   Hence the derivatives are multiplied by sin(latitude).
   Removed the options for CS phase and normalizations.
 
-  Note: In geomagnetism, the derivatives of ALF are usually found with
+  Note: In geomagnetism, the derivatives of Af are usually found with
   respect to the colatitudes. Here the derivatives are found with respect
   to the latitude. The difference is a sign reversal for the derivative of
   the Associated Legendre Functions.
@@ -1782,8 +1782,8 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
   The derivatives can't be computed for latitude = |90| degrees.
  */
 {
-    double pm2, pm1, pmm, plm, rescalem, z, scalef;
-    double *f1, *f2, *PreSqr;
+    float pm2, pm1, pmm, plm, rescalem, z, scalef;
+    float *f1, *f2, *PreSqr;
     int k, kstart, m, n, NumTerms;
 
     NumTerms = ((nMax + 1) * (nMax + 2) / 2);
@@ -1796,7 +1796,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
     }
 
 
-    f1 = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    f1 = (float *) malloc((NumTerms + 1) * sizeof ( float));
     if(f1 == NULL)
     {
         MAG_Error(18);
@@ -1804,7 +1804,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
     }
 
 
-    PreSqr = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    PreSqr = (float *) malloc((NumTerms + 1) * sizeof ( float));
 
     if(PreSqr == NULL)
     {
@@ -1812,7 +1812,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
         return FALSE;
     }
 
-    f2 = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    f2 = (float *) malloc((NumTerms + 1) * sizeof ( float));
 
     if(f2 == NULL)
     {
@@ -1824,7 +1824,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
 
     for(n = 0; n <= 2 * nMax + 1; ++n)
     {
-        PreSqr[n] = sqrt((double) (n));
+        PreSqr[n] = sqrt((float) (n));
     }
 
     k = 2;
@@ -1832,12 +1832,12 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
     for(n = 2; n <= nMax; n++)
     {
         k = k + 1;
-        f1[k] = (double) (2 * n - 1) / (double) (n);
-        f2[k] = (double) (n - 1) / (double) (n);
+        f1[k] = (float) (2 * n - 1) / (float) (n);
+        f2[k] = (float) (n - 1) / (float) (n);
         for(m = 1; m <= n - 2; m++)
         {
             k = k + 1;
-            f1[k] = (double) (2 * n - 1) / PreSqr[n + m] / PreSqr[n - m];
+            f1[k] = (float) (2 * n - 1) / PreSqr[n + m] / PreSqr[n - m];
             f2[k] = PreSqr[n - m - 1] * PreSqr[n + m - 1] / PreSqr[n + m] / PreSqr[n - m];
         }
         k = k + 2;
@@ -1860,7 +1860,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
         k = k + n;
         plm = f1[k] * x * pm1 - f2[k] * pm2;
         Pcup[k] = plm;
-        dPcup[k] = (double) (n) * (pm1 - x * plm) / z;
+        dPcup[k] = (float) (n) * (pm1 - x * plm) / z;
         pm2 = pm1;
         pm1 = plm;
     }
@@ -1877,20 +1877,20 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
         kstart = kstart + m + 1;
         pmm = pmm * PreSqr[2 * m + 1] / PreSqr[2 * m];
         Pcup[kstart] = pmm * rescalem / PreSqr[2 * m + 1];
-        dPcup[kstart] = -((double) (m) * x * Pcup[kstart] / z);
+        dPcup[kstart] = -((float) (m) * x * Pcup[kstart] / z);
         pm2 = pmm / PreSqr[2 * m + 1];
         /* Calculate Pcup(m+1,m)*/
         k = kstart + m + 1;
         pm1 = x * PreSqr[2 * m + 1] * pm2;
         Pcup[k] = pm1*rescalem;
-        dPcup[k] = ((pm2 * rescalem) * PreSqr[2 * m + 1] - x * (double) (m + 1) * Pcup[k]) / z;
+        dPcup[k] = ((pm2 * rescalem) * PreSqr[2 * m + 1] - x * (float) (m + 1) * Pcup[k]) / z;
         /* Calculate Pcup(n,m)*/
         for(n = m + 2; n <= nMax; ++n)
         {
             k = k + n;
             plm = x * f1[k] * pm1 - f2[k] * pm2;
             Pcup[k] = plm*rescalem;
-            dPcup[k] = (PreSqr[n + m] * PreSqr[n - m] * (pm1 * rescalem) - (double) (n) * x * Pcup[k]) / z;
+            dPcup[k] = (PreSqr[n + m] * PreSqr[n - m] * (pm1 * rescalem) - (float) (n) * x * Pcup[k]) / z;
             pm2 = pm1;
             pm1 = plm;
         }
@@ -1901,7 +1901,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
     kstart = kstart + m + 1;
     pmm = pmm / PreSqr[2 * nMax];
     Pcup[kstart] = pmm * rescalem;
-    dPcup[kstart] = -(double) (nMax) * x * Pcup[kstart] / z;
+    dPcup[kstart] = -(float) (nMax) * x * Pcup[kstart] / z;
     free(f1);
     free(PreSqr);
     free(f2);
@@ -1909,7 +1909,7 @@ int MAG_PcupHigh(double *Pcup, double *dPcup, double x, int nMax)
     return TRUE;
 } /* MAG_PcupHigh */
 
-int MAG_PcupLow(double *Pcup, double *dPcup, double x, int nMax)
+int MAG_PcupLow(float *Pcup, float *dPcup, float x, int nMax)
 
 /*   This function evaluates all of the Schmidt-semi normalized associated Legendre
         functions up to degree nMax.
@@ -1929,21 +1929,21 @@ int MAG_PcupLow(double *Pcup, double *dPcup, double x, int nMax)
 
    Written by Manoj Nair, June, 2009 . Manoj.C.Nair@Noaa.Gov.
 
-  Note: In geomagnetism, the derivatives of ALF are usually found with
+  Note: In geomagnetism, the derivatives of Af are usually found with
   respect to the colatitudes. Here the derivatives are found with respect
   to the latitude. The difference is a sign reversal for the derivative of
   the Associated Legendre Functions.
  */
 {
     int n, m, index, index1, index2, NumTerms;
-    double k, z, *schmidtQuasiNorm;
+    float k, z, *schmidtQuasiNorm;
     Pcup[0] = 1.0;
     dPcup[0] = 0.0;
     /*sin (geocentric latitude) - sin_phi */
     z = sqrt((1.0 - x) * (1.0 + x));
 
     NumTerms = ((nMax + 1) * (nMax + 2) / 2);
-    schmidtQuasiNorm = (double *) malloc((NumTerms + 1) * sizeof ( double));
+    schmidtQuasiNorm = (float *) malloc((NumTerms + 1) * sizeof ( float));
 
     if(schmidtQuasiNorm == NULL)
     {
@@ -1977,7 +1977,7 @@ int MAG_PcupLow(double *Pcup, double *dPcup, double x, int nMax)
                     dPcup[index] = x * dPcup[index2] - z * Pcup[index2];
                 } else
                 {
-                    k = (double) (((n - 1) * (n - 1)) - (m * m)) / (double) ((2 * n - 1) * (2 * n - 3));
+                    k = (float) (((n - 1) * (n - 1)) - (m * m)) / (float) ((2 * n - 1) * (2 * n - 3));
                     Pcup[index] = x * Pcup[index2] - k * Pcup[index1];
                     dPcup[index] = x * dPcup[index2] - z * Pcup[index2] - k * dPcup[index1];
                 }
@@ -1993,13 +1993,13 @@ int MAG_PcupLow(double *Pcup, double *dPcup, double x, int nMax)
         index = (n * (n + 1) / 2);
         index1 = (n - 1) * n / 2;
         /* for m = 0 */
-        schmidtQuasiNorm[index] = schmidtQuasiNorm[index1] * (double) (2 * n - 1) / (double) n;
+        schmidtQuasiNorm[index] = schmidtQuasiNorm[index1] * (float) (2 * n - 1) / (float) n;
 
         for(m = 1; m <= n; m++)
         {
             index = (n * (n + 1) / 2 + m);
             index1 = (n * (n + 1) / 2 + m - 1);
-            schmidtQuasiNorm[index] = schmidtQuasiNorm[index1] * sqrt((double) ((n - m + 1) * (m == 1 ? 2 : 1)) / (double) (n + m));
+            schmidtQuasiNorm[index] = schmidtQuasiNorm[index1] * sqrt((float) ((n - m + 1) * (m == 1 ? 2 : 1)) / (float) (n + m));
         }
 
     }
@@ -2038,7 +2038,7 @@ int MAG_SecVarSummation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_Magn
 
      */
     int m, n, index;
-    double cos_phi;
+    float cos_phi;
     MagneticModel->SecularVariationUsed = TRUE;
     MagneticResults->Bz = 0.0;
     MagneticResults->By = 0.0;
@@ -2056,7 +2056,7 @@ int MAG_SecVarSummation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_Magn
             MagneticResults->Bz -= SphVariables.RelativeRadiusPower[n] *
                     (MagneticModel->Secular_Var_Coeff_G[index] * SphVariables.cos_mlambda[m] +
                     MagneticModel->Secular_Var_Coeff_H[index] * SphVariables.sin_mlambda[m])
-                    * (double) (n + 1) * LegendreFunction-> Pcup[index];
+                    * (float) (n + 1) * LegendreFunction-> Pcup[index];
 
             /*		  1 nMax  (n+2)    n     m            m           m
                     By =    SUM (a/r) (m)  SUM  [g cos(m p) + h sin(m p)] dP (sin(phi))
@@ -2065,7 +2065,7 @@ int MAG_SecVarSummation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_Magn
             MagneticResults->By += SphVariables.RelativeRadiusPower[n] *
                     (MagneticModel->Secular_Var_Coeff_G[index] * SphVariables.sin_mlambda[m] -
                     MagneticModel->Secular_Var_Coeff_H[index] * SphVariables.cos_mlambda[m])
-                    * (double) (m) * LegendreFunction-> Pcup[index];
+                    * (float) (m) * LegendreFunction-> Pcup[index];
             /*		   nMax  (n+2) n     m            m           m
                     Bx = - SUM (a/r)   SUM  [g cos(m p) + h sin(m p)] dP (sin(phi))
                                n=1         m=0   n            n           n  */
@@ -2103,9 +2103,9 @@ int MAG_SecVarSummationSpecial(MAGtype_MagneticModel *MagneticModel, MAGtype_Sph
 
      */
     int n, index;
-    double k, sin_phi, *PcupS, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
+    float k, sin_phi, *PcupS, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
 
-    PcupS = (double *) malloc((MagneticModel->nMaxSecVar + 1) * sizeof (double));
+    PcupS = (float *) malloc((MagneticModel->nMaxSecVar + 1) * sizeof (float));
 
     if(PcupS == NULL)
     {
@@ -2122,15 +2122,15 @@ int MAG_SecVarSummationSpecial(MAGtype_MagneticModel *MagneticModel, MAGtype_Sph
     for(n = 1; n <= MagneticModel->nMaxSecVar; n++)
     {
         index = (n * (n + 1) / 2 + 1);
-        schmidtQuasiNorm2 = schmidtQuasiNorm1 * (double) (2 * n - 1) / (double) n;
-        schmidtQuasiNorm3 = schmidtQuasiNorm2 * sqrt((double) (n * 2) / (double) (n + 1));
+        schmidtQuasiNorm2 = schmidtQuasiNorm1 * (float) (2 * n - 1) / (float) n;
+        schmidtQuasiNorm3 = schmidtQuasiNorm2 * sqrt((float) (n * 2) / (float) (n + 1));
         schmidtQuasiNorm1 = schmidtQuasiNorm2;
         if(n == 1)
         {
             PcupS[n] = PcupS[n - 1];
         } else
         {
-            k = (double) (((n - 1) * (n - 1)) - 1) / (double) ((2 * n - 1) * (2 * n - 3));
+            k = (float) (((n - 1) * (n - 1)) - 1) / (float) ((2 * n - 1) * (2 * n - 3));
             PcupS[n] = sin_phi * PcupS[n - 1] - k * PcupS[n - 2];
         }
 
@@ -2177,7 +2177,7 @@ int MAG_Summation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_MagneticMo
     Manoj Nair, June, 2009 Manoj.C.Nair@Noaa.Gov
      */
     int m, n, index;
-    double cos_phi;
+    float cos_phi;
     MagneticResults->Bz = 0.0;
     MagneticResults->By = 0.0;
     MagneticResults->Bx = 0.0;
@@ -2194,7 +2194,7 @@ int MAG_Summation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_MagneticMo
             MagneticResults->Bz -= SphVariables.RelativeRadiusPower[n] *
                     (MagneticModel->Main_Field_Coeff_G[index] * SphVariables.cos_mlambda[m] +
                     MagneticModel->Main_Field_Coeff_H[index] * SphVariables.sin_mlambda[m])
-                    * (double) (n + 1) * LegendreFunction-> Pcup[index];
+                    * (float) (n + 1) * LegendreFunction-> Pcup[index];
 
             /*		  1 nMax  (n+2)    n     m            m           m
                     By =    SUM (a/r) (m)  SUM  [g cos(m p) + h sin(m p)] dP (sin(phi))
@@ -2203,7 +2203,7 @@ int MAG_Summation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_MagneticMo
             MagneticResults->By += SphVariables.RelativeRadiusPower[n] *
                     (MagneticModel->Main_Field_Coeff_G[index] * SphVariables.sin_mlambda[m] -
                     MagneticModel->Main_Field_Coeff_H[index] * SphVariables.cos_mlambda[m])
-                    * (double) (m) * LegendreFunction-> Pcup[index];
+                    * (float) (m) * LegendreFunction-> Pcup[index];
             /*		   nMax  (n+2) n     m            m           m
                     Bx = - SUM (a/r)   SUM  [g cos(m p) + h sin(m p)] dP (sin(phi))
                                n=1         m=0   n            n           n  */
@@ -2248,9 +2248,9 @@ See Section 1.4, "SINGULARITIES AT THE GEOGRAPHIC POLES", WMM Technical report
  */
 {
     int n, index;
-    double k, sin_phi, *PcupS, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
+    float k, sin_phi, *PcupS, schmidtQuasiNorm1, schmidtQuasiNorm2, schmidtQuasiNorm3;
 
-    PcupS = (double *) malloc((MagneticModel->nMax + 1) * sizeof (double));
+    PcupS = (float *) malloc((MagneticModel->nMax + 1) * sizeof (float));
     if(PcupS == 0)
     {
         MAG_Error(14);
@@ -2271,15 +2271,15 @@ See Section 1.4, "SINGULARITIES AT THE GEOGRAPHIC POLES", WMM Technical report
   sqrt((m==0?1:2)*(n-m)!/(n+m!))*(2n-1)!!/(n-m)!  */
 
         index = (n * (n + 1) / 2 + 1);
-        schmidtQuasiNorm2 = schmidtQuasiNorm1 * (double) (2 * n - 1) / (double) n;
-        schmidtQuasiNorm3 = schmidtQuasiNorm2 * sqrt((double) (n * 2) / (double) (n + 1));
+        schmidtQuasiNorm2 = schmidtQuasiNorm1 * (float) (2 * n - 1) / (float) n;
+        schmidtQuasiNorm3 = schmidtQuasiNorm2 * sqrt((float) (n * 2) / (float) (n + 1));
         schmidtQuasiNorm1 = schmidtQuasiNorm2;
         if(n == 1)
         {
             PcupS[n] = PcupS[n - 1];
         } else
         {
-            k = (double) (((n - 1) * (n - 1)) - 1) / (double) ((2 * n - 1) * (2 * n - 3));
+            k = (float) (((n - 1) * (n - 1)) - 1) / (float) ((2 * n - 1) * (2 * n - 3));
             PcupS[n] = sin_phi * PcupS[n - 1] - k * PcupS[n - 2];
         }
 
@@ -2368,9 +2368,9 @@ int MAG_ConvertGeoidToEllipsoidHeight(MAGtype_CoordGeodetic *CoordGeodetic, MAGt
 
  */
 {
-    double DeltaHeight;
+    float DeltaHeight;
     int Error_Code;
-    double lat, lon;
+    float lat, lon;
 
     if(Geoid->UseGeoid == 1)
     { /* Geoid correction required */
@@ -2387,9 +2387,9 @@ int MAG_ConvertGeoidToEllipsoidHeight(MAGtype_CoordGeodetic *CoordGeodetic, MAGt
     return ( Error_Code);
 } /* MAG_ConvertGeoidToEllipsoidHeight*/
 
-int MAG_GetGeoidHeight(double Latitude,
-        double Longitude,
-        double *DeltaHeight,
+int MAG_GetGeoidHeight(float Latitude,
+        float Longitude,
+        float *DeltaHeight,
         MAGtype_Geoid *Geoid)
 /*
  * The  function MAG_GetGeoidHeight returns the height of the
@@ -2405,11 +2405,11 @@ int MAG_GetGeoidHeight(double Latitude,
  */
 {
     long Index;
-    double DeltaX, DeltaY;
-    double ElevationSE, ElevationSW, ElevationNE, ElevationNW;
-    double OffsetX, OffsetY;
-    double PostX, PostY;
-    double UpperY, LowerY;
+    float DeltaX, DeltaY;
+    float ElevationSE, ElevationSW, ElevationNE, ElevationNW;
+    float OffsetX, OffsetY;
+    float PostX, PostY;
+    float UpperY, LowerY;
     int Error_Code = 0;
 
     if(!Geoid->Geoid_Initialized)
@@ -2450,12 +2450,12 @@ int MAG_GetGeoidHeight(double Latitude,
             PostY--;
 
         Index = (long) (PostY * Geoid->NumbGeoidCols + PostX);
-        ElevationNW = (double) Geoid->GeoidHeightBuffer[ Index ];
-        ElevationNE = (double) Geoid->GeoidHeightBuffer[ Index + 1 ];
+        ElevationNW = (float) Geoid->GeoidHeightBuffer[ Index ];
+        ElevationNE = (float) Geoid->GeoidHeightBuffer[ Index + 1 ];
 
         Index = (long) ((PostY + 1) * Geoid->NumbGeoidCols + PostX);
-        ElevationSW = (double) Geoid->GeoidHeightBuffer[ Index ];
-        ElevationSE = (double) Geoid->GeoidHeightBuffer[ Index + 1 ];
+        ElevationSW = (float) Geoid->GeoidHeightBuffer[ Index ];
+        ElevationSE = (float) Geoid->GeoidHeightBuffer[ Index + 1 ];
 
         /*  Perform Bi-Linear Interpolation to compute Height above Ellipsoid:        */
 
@@ -2474,12 +2474,12 @@ int MAG_GetGeoidHeight(double Latitude,
     return TRUE;
 } /*MAG_GetGeoidHeight*/
 
-void MAG_EquivalentLatLon(double lat, double lon, double *repairedLat, double  *repairedLon) 
+void MAG_EquivalentLatLon(float lat, float lon, float *repairedLat, float  *repairedLon) 
 /*This function takes a latitude and longitude that are ordinarily out of range 
  and gives in range values that are equivalent on the Earth's surface.  This is
  required to get correct values for the geoid function.*/
 {
-    double colat;
+    float colat;
     colat = 90 - lat;
     *repairedLon = lon;
     if (colat < 0)
@@ -2504,9 +2504,9 @@ void MAG_EquivalentLatLon(double lat, double lon, double *repairedLat, double  *
 
 /*New Error Functions*/
 
-void MAG_WMMErrorCalc(double H, MAGtype_GeoMagneticElements *Uncertainty)
+void MAG_WMMErrorCalc(float H, MAGtype_GeoMagneticElements *Uncertainty)
 {
-    double decl_variable, decl_constant;
+    float decl_variable, decl_constant;
     Uncertainty->F = WMM_UNCERTAINTY_F;
     Uncertainty->H = WMM_UNCERTAINTY_H;
     Uncertainty->X = WMM_UNCERTAINTY_X;
@@ -2523,7 +2523,7 @@ void MAG_WMMErrorCalc(double H, MAGtype_GeoMagneticElements *Uncertainty)
 
 // Yale modifications
 
-int ingestPoint(double lat, double lon, double alt, double year, MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate)
+int ingestPoint(float lat, float lon, float alt, float year, MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate)
 /*
 Ingest the point and time data and update the structures
 lat, lon in decimal degrees, positive north and east
