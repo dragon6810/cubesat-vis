@@ -264,10 +264,6 @@ int MAG_Geomag(MAGtype_Ellipsoid Ellip,
 
 void MAG_Error(int control);
 
-int MAG_ValidateDMSstring(char *input, int min, int max, char *Error);
-
-int MAG_Warnings(int control, float value, MAGtype_MagneticModel *MagneticModel);
-
 /*Memory and File Processing*/
 
 MAGtype_LegendreFunction *MAG_AllocateLegendreFunctionMemory(int NumTerms);
@@ -280,32 +276,14 @@ void MAG_AssignHeaderValues(MAGtype_MagneticModel *model, char values[][MAXLINEL
 
 void MAG_AssignMagneticModelCoeffs(MAGtype_MagneticModel *Assignee, MAGtype_MagneticModel *Source, int nMax, int nMaxSecVar);
 
-int MAG_FreeMemory(MAGtype_MagneticModel *MagneticModel, MAGtype_MagneticModel *TimedMagneticModel, MAGtype_LegendreFunction *LegendreFunction);
-
-int MAG_FreeLegendreMemory(MAGtype_LegendreFunction *LegendreFunction);
-
-int MAG_FreeMagneticModelMemory(MAGtype_MagneticModel *MagneticModel);
-
-int MAG_FreeSphVarMemory(MAGtype_SphericalHarmonicVariables *SphVar);
-
-void MAG_PrintWMMFormat(char *filename, MAGtype_MagneticModel *MagneticModel);
-
-void MAG_PrintEMMFormat(char *filename, char *filenameSV, MAGtype_MagneticModel *MagneticModel);
-
-void MAG_PrintSHDFFormat(char *filename, MAGtype_MagneticModel *(*MagneticModel)[], int epochs);
-
 int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel *MagneticModel);
 
 int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_MagneticModel *MagneticModel);
-
-int MAG_readMagneticModel_SHDF(char *filename, MAGtype_MagneticModel *(*magneticmodels)[], int array_size);
 
 char *MAG_Trim(char *str);
 
 /*Conversions, Transformations, and other Calculations*/
 int MAG_CalculateGeoMagneticElements(MAGtype_MagneticResults *MagneticResultsGeo, MAGtype_GeoMagneticElements *GeoMagneticElements);
-
-void MAG_CalculateGradientElements(MAGtype_MagneticResults GradResults, MAGtype_GeoMagneticElements MagneticElements, MAGtype_GeoMagneticElements *GradElements);
 
 int MAG_CalculateSecularVariationElements(MAGtype_MagneticResults MagneticVariation, MAGtype_GeoMagneticElements *MagneticElements);
 
