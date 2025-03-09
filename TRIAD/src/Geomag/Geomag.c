@@ -63,7 +63,7 @@ static FRESULT Geomag_ReadMagModel(char* filename, Geomag_MagneticModel_t *Magne
     Geomag_InitializeModel(MagneticModel);
     MagneticModel->nMax = MAX_N_MODE;
     MagneticModel->nMaxSecVar = MAX_N_MODE;
-    for(i=0; i<CALCULATE_NUMTERMS(MAX_N_MODE)+1; i++)
+    for(i=0; i<CALCULATE_NUMTERMS(MAX_N_MODE); i++)
     {
         MagneticModel->Main_Field_Coeff_G[i] = geomag_wmm_elements[i].coeffg;
         MagneticModel->Main_Field_Coeff_H[i] = geomag_wmm_elements[i].coeffh;

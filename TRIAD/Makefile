@@ -1,5 +1,5 @@
 CC := gcc -c
-CC_FLAGS := -Wall -O3 -g -std=gnu11 -fsanitize=address -MMD
+CC_FLAGS := -Wall -O0 -g -std=gnu11 -fsanitize=address -MMD
 
 LD := gcc
 LD_FLAGS := -fsanitize=address

@@ -7,12 +7,12 @@ DATA_HEADER=$'#ifndef _geomag_data_h\n#define _geomag_data_h\n\n#include <Geomag
 DATA_FOOTER=$'#endif'
 
 WMM_STRUCT=$'typedef struct wmm_element_s\n{\n    double coeffg;\n    double coeffh;\n    double slopeg;\n    double slopeh;\n} wmm_element_t;\n'
-WMM_DATA_HEADER=$'const wmm_element_t geomag_wmm_elements[] =\n{'
+WMM_DATA_HEADER=$'static const wmm_element_t geomag_wmm_elements[] =\n{'
 WMM_FILE=$'WMM.COF'
 WMM_DATA_FOOTER=$'};\n'
 
 WMM_TEST_STRUCT=$'typedef struct wmm_test_element_s\n{\n    double time;\n    double alt, lat, lon;\n    double x, y, z;\n} wmm_test_element_t;\n'
-WMM_TEST_DATA_HEADER=$'const wmm_test_element_t geomag_wmm_test_elements[] =\n{'
+WMM_TEST_DATA_HEADER=$'static const wmm_test_element_t geomag_wmm_test_elements[] =\n{'
 WMM_TEST_FILE=$'WMM2025_TestValues.txt'
 WMM_TEST_DATA_FOOTER=$'};\n'
 

@@ -8,6 +8,7 @@
 #include <assert.h>
 
 #include <arm_math.h>
+#include "GeomagData.h"
 
 /* $Id: GeomagnetismLibrary.c 1521 2017-01-24 17:52:41Z awoods $
  *
@@ -122,35 +123,50 @@ CALLS:  	MAG_AllocateLegendreFunctionMemory(NumTerms);  ( For storing the Af fun
 
  */
 {
-    MAGtype_LegendreFunction *LegendreFunction;
-    MAGtype_SphericalHarmonicVariables *SphVariables;
+    MAGtype_LegendreFunction LegendreFunction={};
+    MAGtype_SphericalHarmonicVariables SphVariables={};
     int NumTerms;
     MAGtype_MagneticResults MagneticResultsSph, MagneticResultsGeo, MagneticResultsSphVar, MagneticResultsGeoVar;
 
     NumTerms = ((TimedMagneticModel->nMax + 1) * (TimedMagneticModel->nMax + 2) / 2); 
-    LegendreFunction = MAG_AllocateLegendreFunctionMemory(NumTerms); /* For storing the Af functions */
-    SphVariables = MAG_AllocateSphVarMemory(TimedMagneticModel->nMax);
-    MAG_ComputeSphericalHarmonicVariables(Ellip, CoordSpherical, TimedMagneticModel->nMax, SphVariables); /* Compute Spherical Harmonic variables  */
-    MAG_AssociatedLegendreFunction(CoordSpherical, TimedMagneticModel->nMax, LegendreFunction); /* Compute Af  */
-    MAG_Summation(LegendreFunction, TimedMagneticModel, *SphVariables, CoordSpherical, &MagneticResultsSph); /* Accumulate the spherical harmonic coefficients*/
-    MAG_SecVarSummation(LegendreFunction, TimedMagneticModel, *SphVariables, CoordSpherical, &MagneticResultsSphVar); /*Sum the Secular Variation Coefficients  */
+    MAG_ComputeSphericalHarmonicVariables(Ellip, CoordSpherical, TimedMagneticModel->nMax, &SphVariables); /* Compute Spherical Harmonic variables  */
+    MAG_AssociatedLegendreFunction(CoordSpherical, TimedMagneticModel->nMax, &LegendreFunction); /* Compute Af  */
+    MAG_Summation(&LegendreFunction, TimedMagneticModel, SphVariables, CoordSpherical, &MagneticResultsSph); /* Accumulate the spherical harmonic coefficients*/
+    MAG_SecVarSummation(&LegendreFunction, TimedMagneticModel, SphVariables, CoordSpherical, &MagneticResultsSphVar); /*Sum the Secular Variation Coefficients  */
     MAG_RotateMagneticVector(CoordSpherical, CoordGeodetic, MagneticResultsSph, &MagneticResultsGeo); /* Map the computed Magnetic fields to Geodeitic coordinates  */
     MAG_RotateMagneticVector(CoordSpherical, CoordGeodetic, MagneticResultsSphVar, &MagneticResultsGeoVar); /* Map the secular variation field components to Geodetic coordinates*/
     MAG_CalculateGeoMagneticElements(&MagneticResultsGeo, GeoMagneticElements); /* Calculate the Geomagnetic elements, Equation 19 , WMM Technical report */
     MAG_CalculateSecularVariationElements(MagneticResultsGeoVar, GeoMagneticElements); /*Calculate the secular variation of each of the Geomagnetic elements*/
 
-    MAG_FreeLegendreMemory(LegendreFunction);
-    MAG_FreeSphVarMemory(SphVariables);
-
     return TRUE;
 } /*MAG_Geomag*/
 
-int MAG_robustReadMagModels(char *filename, MAGtype_MagneticModel *(*magneticmodels)[], int array_size)
+int MAG_robustReadMagModels(MAGtype_MagneticModel* magneticmodel)
 {
+    int i;
+
     char line[MAXLINELENGTH];
     int n, nMax = 0, num_terms, a;
     FILE *MODEfILE;
-    MODEfILE = fopen(filename, "r");
+
+    assert(magneticmodel);
+
+    memset(magneticmodel, 0, sizeof(MAGtype_MagneticModel));
+    magneticmodel->nMax = MAX_N_MODE;
+    magneticmodel->nMaxSecVar = MAX_N_MODE;
+    magneticmodel->epoch = 2025.0;
+    magneticmodel->CoefficientFileEndDate = magneticmodel->epoch + 5;
+
+    for(i=0; i<CALCULATE_NUMTERMS(MAX_N_MODE); i++)
+    {
+        magneticmodel->Main_Field_Coeff_G[i+1] = geomag_wmm_elements[i].coeffg;
+        magneticmodel->Main_Field_Coeff_H[i+1] = geomag_wmm_elements[i].coeffh;
+        magneticmodel->Secular_Var_Coeff_G[i+1] = geomag_wmm_elements[i].slopeg;
+        magneticmodel->Secular_Var_Coeff_H[i+1] = geomag_wmm_elements[i].slopeh;
+    }
+
+#if 0
+    MODEfILE = fopen("WMM.COF", "r");
     if(MODEfILE == 0) {
         return 0;
     }
@@ -158,9 +174,9 @@ int MAG_robustReadMagModels(char *filename, MAGtype_MagneticModel *(*magneticmod
         return 0;
     }
     if(line[0] == '%'){
-        MAG_readMagneticModel_SHDF(filename, magneticmodels, array_size);
+        MAG_readMagneticModel_SHDF("WMM.COF", &magneticmodel, 1);
     }
-    else if(array_size == 1)
+    else if(1 == 1)
     {
 
         do
@@ -171,15 +187,18 @@ int MAG_robustReadMagModels(char *filename, MAGtype_MagneticModel *(*magneticmod
             if(n > nMax && (n < 99999 && a == 1 && n > 0))
                 nMax = n;
         } while(n < 99999 && a == 1);
+        assert(nMax == MAX_N_MODE);
         num_terms = CALCULATE_NUMTERMS(nMax);
-        (*magneticmodels)[0] = MAG_AllocateModelMemory(num_terms);
-        (*magneticmodels)[0]->nMax = nMax;
-        (*magneticmodels)[0]->nMaxSecVar = nMax;
-        MAG_readMagneticModel(filename, (*magneticmodels)[0]);
-        (*magneticmodels)[0]->CoefficientFileEndDate = (*magneticmodels)[0]->epoch + 5;
+        magneticmodel->nMax = nMax;
+        magneticmodel->nMaxSecVar = nMax;
+        MAG_readMagneticModel("WMM.COF", magneticmodel);
+        magneticmodel->CoefficientFileEndDate = magneticmodel->epoch + 5;
 
     } else return 0;
     fclose(MODEfILE);
+
+#endif
+
     return 1;
 } /*MAG_robustReadMagModels*/
 
@@ -283,92 +302,6 @@ CALLS : none
  ******************************************************************************/
 
 
-MAGtype_LegendreFunction *MAG_AllocateLegendreFunctionMemory(int NumTerms)
-
-/* Allocate memory for Associated Legendre Function data types.
-   Should be called before computing Associated Legendre Functions.
-
- INPUT: NumTerms : int : Total number of spherical harmonic coefficients in the model
-
-
- OUTPUT:    Pointer to data structure MAGtype_LegendreFunction with the following elements
-                        float *Pcup;  (  pointer to store Legendre Function  )
-                        float *dPcup; ( pointer to store  Derivative of Legendre function )
-
-                        FALSE: Failed to allocate memory
-
-CALLS : none
-
- */
-{
-    MAGtype_LegendreFunction *LegendreFunction;
-
-    LegendreFunction = (MAGtype_LegendreFunction *) calloc(1, sizeof (MAGtype_LegendreFunction));
-
-    if(!LegendreFunction)
-    {
-        MAG_Error(1);
-        return NULL;
-    }
-    
-    return LegendreFunction;
-} /*MAGtype_LegendreFunction*/
-
-MAGtype_MagneticModel *MAG_AllocateModelMemory(int NumTerms)
-
-/* Allocate memory for WMM Coefficients
- * Should be called before reading the model file *
-
-  INPUT: NumTerms : int : Total number of spherical harmonic coefficients in the model
-
-
- OUTPUT:    Pointer to data structure MAGtype_MagneticModel with the following elements
-                        float EditionDate;
-                        float epoch;       Base time of Geomagnetic model epoch (yrs)
-                        char  ModelName[20];
-                        float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                        float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                        float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        int nMax;  Maximum degree of spherical harmonic model
-                        int nMaxSecVar; Maxumum degree of spherical harmonic secular model
-                        int SecularVariationUsed; Whether or not the magnetic secular variation vector will be needed by program
-
-                        FALSE: Failed to allocate memory
-CALLS : none
- */
-{
-    MAGtype_MagneticModel *MagneticModel;
-    int i;
-
-
-    MagneticModel = (MAGtype_MagneticModel *) calloc(1, sizeof (MAGtype_MagneticModel));
-
-    if(MagneticModel == NULL)
-    {
-        MAG_Error(2);
-        return NULL;
-    }
-
-    MagneticModel->CoefficientFileEndDate = 0;
-    MagneticModel->EditionDate = 0;
-    strcpy(MagneticModel->ModelName, "");
-    MagneticModel->SecularVariationUsed = 0;
-    MagneticModel->epoch = 0;
-    MagneticModel->nMax = 0;
-    MagneticModel->nMaxSecVar = 0;
-    
-    for(i=0; i<NumTerms; i++) {
-        MagneticModel->Main_Field_Coeff_G[i] = 0;
-        MagneticModel->Main_Field_Coeff_H[i] = 0;
-        MagneticModel->Secular_Var_Coeff_G[i] = 0;
-        MagneticModel->Secular_Var_Coeff_H[i] = 0;
-    }
-    
-    return MagneticModel;
-
-} /*MAG_AllocateModelMemory*/
-
 MAGtype_SphericalHarmonicVariables* MAG_AllocateSphVarMemory(int nMax)
 {
     MAGtype_SphericalHarmonicVariables* SphVariables;
@@ -428,124 +361,6 @@ void MAG_AssignMagneticModelCoeffs(MAGtype_MagneticModel *Assignee, MAGtype_Magn
     }
     return;
 } /*MAG_AssignMagneticModelCoeffs*/
-
-int MAG_FreeMemory(MAGtype_MagneticModel *MagneticModel, MAGtype_MagneticModel *TimedMagneticModel, MAGtype_LegendreFunction *LegendreFunction)
-
-/* Free memory used by WMM functions. Only to be called at the end of the main function.
-INPUT :  MagneticModel	pointer to data structure with the following elements
-
-                        float EditionDate;
-                        float epoch;       Base time of Geomagnetic model epoch (yrs)
-                        char  ModelName[20];
-                        float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                        float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                        float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        int nMax;  Maximum degree of spherical harmonic model
-                        int nMaxSecVar; Maxumum degree of spherical harmonic secular model
-                        int SecularVariationUsed; Whether or not the magnetic secular variation vector will be needed by program
-
-                TimedMagneticModel 	Pointer to data structure similar to the first input.
-                LegendreFunction Pointer to data structure with the following elements
-                                                float *Pcup;  (  pointer to store Legendre Function  )
-                                                float *dPcup; ( pointer to store  Derivative of Lagendre function )
-
-OUTPUT  none
-CALLS : none
-
- */
-{
-    if(MagneticModel)
-    {
-        free(MagneticModel);
-        MagneticModel = NULL;
-    }
-
-    if(TimedMagneticModel)
-    {
-        free(TimedMagneticModel);
-        TimedMagneticModel = NULL;
-    }
-
-    if(LegendreFunction)
-    {
-        free(LegendreFunction);
-        LegendreFunction = NULL;
-    }
-
-    return TRUE;
-} /*MAG_FreeMemory */
-
-int MAG_FreeMagneticModelMemory(MAGtype_MagneticModel *MagneticModel)
-
-/* Free the magnetic model memory used by WMM functions.
-INPUT :  MagneticModel	pointer to data structure with the following elements
-
-                        float EditionDate;
-                        float epoch;       Base time of Geomagnetic model epoch (yrs)
-                        char  ModelName[20];
-                        float *Main_Field_Coeff_G;          C - Gauss coefficients of main geomagnetic model (nT)
-                        float *Main_Field_Coeff_H;          C - Gauss coefficients of main geomagnetic model (nT)
-                        float *Secular_Var_Coeff_G;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        float *Secular_Var_Coeff_H;  CD - Gauss coefficients of secular geomagnetic model (nT/yr)
-                        int nMax;  Maximum degree of spherical harmonic model
-                        int nMaxSecVar; Maxumum degree of spherical harmonic secular model
-                        int SecularVariationUsed; Whether or not the magnetic secular variation vector will be needed by program
-
-OUTPUT  none
-CALLS : none
-
- */
-{
-    if(MagneticModel)
-    {
-        free(MagneticModel);
-        MagneticModel = NULL;
-    }
-
-    return TRUE;
-} /*MAG_FreeMagneticModelMemory */
-
-int MAG_FreeLegendreMemory(MAGtype_LegendreFunction *LegendreFunction)
-
-/* Free the Legendre Coefficients memory used by the WMM functions.
-INPUT : LegendreFunction Pointer to data structure with the following elements
-                                                float *Pcup;  (  pointer to store Legendre Function  )
-                                                float *dPcup; ( pointer to store  Derivative of Lagendre function )
-
-OUTPUT: none
-CALLS : none
-
- */
-{
-    if(LegendreFunction)
-    {
-        free(LegendreFunction);
-        LegendreFunction = NULL;
-    }
-
-    return TRUE;
-} /*MAG_FreeLegendreMemory */
-
-int MAG_FreeSphVarMemory(MAGtype_SphericalHarmonicVariables *SphVar)
-
-/* Free the Spherical Harmonic Variable memory used by the WMM functions.
-INPUT : LegendreFunction Pointer to data structure with the following elements
-                                                float *RelativeRadiusPower
-                                                float *cos_mlambda
-                                                float *sin_mlambda
- OUTPUT: none
- CALLS : none
- */
-{
-    if(SphVar)
-    {
-        free(SphVar);
-        SphVar = NULL;
-    }
-
-    return TRUE;
-} /*MAG_FreeSphVarMemory*/
 
 int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel * MagneticModel)
 {
@@ -707,164 +522,6 @@ int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_Magnet
 
     return TRUE;
 } /*MAG_readMagneticModel_Large*/
-
-int MAG_readMagneticModel_SHDF(char *filename, MAGtype_MagneticModel *(*magneticmodels)[], int array_size)
-/*
- * MAG_readMagneticModels - Read the Magnetic Models from an SHDF format file
- *
- * Input:
- *  filename - Path to the SHDF format model file to be read
- *  array_size - Max No of models to be read from the file
- *
- * Output:
- *  magneticmodels[] - Array of magnetic models read from the file
- *
- * Return value:
- *  Returns the number of models read from the file.
- *  -2 implies that internal or external static degree was not found in the file, hence memory cannot be allocated
- *  -1 implies some error during file processing (I/O)
- *  0 implies no models were read from the file
- *  if ReturnValue > array_size then there were too many models in model file but only <array_size> number were read .
- *  if ReturnValue <= array_size then the function execution was successful.
- */
-{
-    char paramkeys[NOOFPARAMS][MAXLINELENGTH] = {
-        "SHDF ",
-        "ModelName: ",
-        "Publisher: ",
-        "ReleaseDate: ",
-        "DataCutOff: ",
-        "ModelStartYear: ",
-        "ModelEndYear: ",
-        "Epoch: ",
-        "IntStaticDeg: ",
-        "IntSecVarDeg: ",
-        "ExtStaticDeg: ",
-        "ExtSecVarDeg: ",
-        "GeoMagRefRad: ",
-        "Normalization: ",
-        "SpatBasFunc: "
-    };
-
-    char paramvalues[NOOFPARAMS][MAXLINELENGTH];
-    char linedata[MAXLINELENGTH];
-    char *line = linedata;
-    char *ptrreset;
-    char paramvalue[MAXLINELENGTH];
-    int paramvaluelength = 0;
-    int paramkeylength = 0;
-    int i = 0, j = 0;
-    int newrecord = 1;
-    int header_index = -1;
-    int numterms;
-    int tempint;
-    int allocationflag = 0;
-    char coefftype; /* Internal or External (I/E) */
-
-    /* For reading coefficients */
-    int n, m;
-    float gnm, hnm, dgnm, dhnm, cutoff;
-    int index;
-    
-    FILE *stream;
-    ptrreset = line;
-    stream = fopen(filename, READONLYMODE);
-    if(stream == NULL)
-    {
-        perror("File open error");
-        return header_index;
-    }
-
-    /* Read records from the model file and store header information. */
-    while(fgets(line, MAXLINELENGTH, stream) != NULL)
-    {
-        j++;
-        if(strlen(MAG_Trim(line)) == 0)
-            continue;
-        if(*line == '%')
-        {
-            line++;
-            if(newrecord)
-            {
-                if(header_index > -1)
-                {
-                    MAG_AssignHeaderValues((*magneticmodels)[header_index], paramvalues);
-                }
-                header_index++;
-                if(header_index >= array_size)
-                {
-                    fprintf(stderr, "Header limit exceeded - too many models in model file. (%d)\n", header_index);
-                    return array_size + 1;
-                }
-                newrecord = 0;
-                allocationflag = 0;
-            }
-            for(i = 0; i < NOOFPARAMS; i++)
-            {
-
-                paramkeylength = strlen(paramkeys[i]);
-                if(!strncmp(line, paramkeys[i], paramkeylength))
-                {
-                    paramvaluelength = strlen(line) - paramkeylength;
-                    strncpy(paramvalue, line + paramkeylength, paramvaluelength);
-                    paramvalue[paramvaluelength] = '\0';
-                    strcpy(paramvalues[i], paramvalue);
-                    if(!strcmp(paramkeys[i], paramkeys[INTSTATICDEG]) || !strcmp(paramkeys[i], paramkeys[EXTSTATICDEG]))
-                    {
-                        tempint = atoi(paramvalues[i]);
-                        if(tempint > 0 && allocationflag == 0)
-                        {
-                            numterms = CALCULATE_NUMTERMS(tempint);
-                            (*magneticmodels)[header_index] = MAG_AllocateModelMemory(numterms);
-                            /* model = (*magneticmodels)[header_index]; */
-                            allocationflag = 1;
-                        }
-                    }
-                    break;
-                }
-            }
-            line--;
-        } else if(*line == '#')
-        {
-            /* process comments */
-
-        } else if(sscanf(line, "%c,%d,%d", &coefftype, &n, &m) == 3)
-        {
-            if(m == 0)
-            {
-                sscanf(line, "%c,%d,%d,%f,,%f,", &coefftype, &n, &m, &gnm, &dgnm);
-                hnm = 0;
-                dhnm = 0;
-            } else
-                sscanf(line, "%c,%d,%d,%f,%f,%f,%f", &coefftype, &n, &m, &gnm, &hnm, &dgnm, &dhnm);
-            newrecord = 1;
-            if(!allocationflag)
-            {
-                fprintf(stderr, "Degree not found in model. Memory cannot be allocated.\n");
-                return _DEGREE_NOT_FOUND;
-            }
-            if(m <= n)
-            {
-                index = (n * (n + 1) / 2 + m);
-                (*magneticmodels)[header_index]->Main_Field_Coeff_G[index] = gnm;
-                (*magneticmodels)[header_index]->Secular_Var_Coeff_G[index] = dgnm;
-                (*magneticmodels)[header_index]->Main_Field_Coeff_H[index] = hnm;
-                (*magneticmodels)[header_index]->Secular_Var_Coeff_H[index] = dhnm;
-            }
-        }
-    }
-    if(header_index > -1)
-        MAG_AssignHeaderValues((*magneticmodels)[header_index], paramvalues);
-    fclose(stream);
-
-    cutoff = (*magneticmodels)[array_size - 1]->CoefficientFileEndDate;
-
-    for(i = 0; i < array_size; i++) (*magneticmodels)[i]->CoefficientFileEndDate = cutoff;
-
-    free(ptrreset);
-    ptrreset = NULL;
-    return header_index + 1;
-}/*MAG_readMagneticModel_SHDF*/
 
 char *MAG_Trim(char *str)
 {
@@ -1539,9 +1196,9 @@ OUTPUT  LegendreFunction  Calculated Legendre variables in the data structure
 
     sin_phi = sin(DEG2RAD(CoordSpherical.phig)); /* sin  (geocentric latitude) */
 
-    if(nMax <= 16 || (1 - fabs(sin_phi)) < 1.0e-10) /* If nMax is less tha 16 or at the poles */
-        FLAG = MAG_PcupLow(LegendreFunction->Pcup, LegendreFunction->dPcup, sin_phi, nMax);
-    else FLAG = MAG_PcupHigh(LegendreFunction->Pcup, LegendreFunction->dPcup, sin_phi, nMax);
+    if(MAX_N_MODE <= 16 || (1 - fabs(sin_phi)) < 1.0e-10) /* If nMax is less tha 16 or at the poles */
+        FLAG = MAG_PcupLow(LegendreFunction->Pcup, LegendreFunction->dPcup, sin_phi, MAX_N_MODE);
+    else FLAG = MAG_PcupHigh(LegendreFunction->Pcup, LegendreFunction->dPcup, sin_phi, MAX_N_MODE);
     if(FLAG == 0) /* Error while computing  Legendre variables*/
         return FALSE;
 
@@ -1581,7 +1238,7 @@ int MAG_ComputeSphericalHarmonicVariables(MAGtype_Ellipsoid Ellip, MAGtype_Coord
     /* for n = 0 ... model_order, compute (Radius of Earth / Spherical radius r)^(n+2)
     for n  1..nMax-1 (this is much faster than calling pow MAX_N+1 times).      */
     SphVariables->RelativeRadiusPower[0] = (Ellip.re / CoordSpherical.r) * (Ellip.re / CoordSpherical.r);
-    for(n = 1; n <= nMax; n++)
+    for(n = 1; n <= MAX_N_MODE; n++)
     {
         SphVariables->RelativeRadiusPower[n] = SphVariables->RelativeRadiusPower[n - 1] * (Ellip.re / CoordSpherical.r);
     }
@@ -1596,7 +1253,7 @@ int MAG_ComputeSphericalHarmonicVariables(MAGtype_Ellipsoid Ellip, MAGtype_Coord
 
     SphVariables->cos_mlambda[1] = cos_lambda;
     SphVariables->sin_mlambda[1] = sin_lambda;
-    for(m = 2; m <= nMax; m++)
+    for(m = 2; m <= MAX_N_MODE; m++)
     {
         SphVariables->cos_mlambda[m] = SphVariables->cos_mlambda[m - 1] * cos_lambda - SphVariables->sin_mlambda[m - 1] * sin_lambda;
         SphVariables->sin_mlambda[m] = SphVariables->cos_mlambda[m - 1] * sin_lambda + SphVariables->sin_mlambda[m - 1] * cos_lambda;
@@ -2005,7 +1662,7 @@ int MAG_Summation(MAGtype_LegendreFunction *LegendreFunction, MAGtype_MagneticMo
     MagneticResults->Bz = 0.0;
     MagneticResults->By = 0.0;
     MagneticResults->Bx = 0.0;
-    for(n = 1; n <= MagneticModel->nMax; n++)
+    for(n = 1; n <= MAX_N_MODE; n++)
     {
         for(m = 0; m <= n; m++)
         {
@@ -2138,11 +1795,11 @@ CALLS : none
     a = TimedMagneticModel->nMaxSecVar;
     b = (a * (a + 1) / 2 + a);
     strcpy(TimedMagneticModel->ModelName, MagneticModel->ModelName);
-    for(n = 1; n <= MagneticModel->nMax; n++)
+    for(n = 1; n <= MAX_N_MODE; n++)
     {
         for(m = 0; m <= n; m++)
         {
-            index = (n * (n + 1) / 2 + m);
+            index = (n * (n + 1) / 2 + m) - 1;
             if(index <= b)
             {
                 TimedMagneticModel->Main_Field_Coeff_H[index] = MagneticModel->Main_Field_Coeff_H[index] + (UserDate.DecimalYear - MagneticModel->epoch) * MagneticModel->Secular_Var_Coeff_H[index];
@@ -2365,7 +2022,7 @@ int calculateMagneticField(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *M
     //MAGtype_Geoid Geoid;
     MAGtype_Ellipsoid Ellip;
     MAGtype_CoordSpherical CoordSpherical;
-    MAGtype_MagneticModel * MagneticModels[1], *TimedMagneticModel;
+    MAGtype_MagneticModel MagneticModel, TimedMagneticModel;
     char filename[] = "WMM.COF";
     char VersionDate[12];
     int NumTerms, Flag = 1, nMax = 0;
@@ -2375,16 +2032,9 @@ int calculateMagneticField(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *M
 
     strncpy(VersionDate, VERSIONDATE_LARGE + 39, 11);
     VersionDate[11] = '\0';
-    if(!MAG_robustReadMagModels(filename, &MagneticModels, epochs)) {
+    if(!MAG_robustReadMagModels(&MagneticModel)) {
         printf("\n WMM.COF not found.  Exiting. \n ");
         return 1;
-    }
-    if(nMax < MagneticModels[0]->nMax) nMax = MagneticModels[0]->nMax;
-    NumTerms = ((nMax + 1) * (nMax + 2) / 2);
-    TimedMagneticModel = MAG_AllocateModelMemory(NumTerms); /* For storing the time modified WMM Model parameters */
-    if(MagneticModels[0] == NULL || TimedMagneticModel == NULL)
-    {
-        MAG_Error(2);
     }
     MAG_SetElipseDefaults(&Ellip); /* Set default values and constants */
 
@@ -2394,8 +2044,8 @@ int calculateMagneticField(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *M
     /* Set EGM96 Geoid parameters END */
 
     MAG_GeodeticToSpherical(Ellip, *CoordGeodetic, &CoordSpherical); /*Convert from geodetic to Spherical Equations: 17-18, WMM Technical report*/
-    MAG_TimelyModifyMagneticModel(*MagneticDate, MagneticModels[0], TimedMagneticModel); /* Time adjust the coefficients, Equation 19, WMM Technical report */
-    MAG_Geomag(Ellip, CoordSpherical, *CoordGeodetic, TimedMagneticModel, GeoMagneticElements); /* Computes the geoMagnetic field elements and their time change*/
+    MAG_TimelyModifyMagneticModel(*MagneticDate, &MagneticModel, &TimedMagneticModel); /* Time adjust the coefficients, Equation 19, WMM Technical report */
+    MAG_Geomag(Ellip, CoordSpherical, *CoordGeodetic, &TimedMagneticModel, GeoMagneticElements); /* Computes the geoMagnetic field elements and their time change*/
     MAG_CalculateGridVariation(*CoordGeodetic, GeoMagneticElements);
     MAG_WMMErrorCalc(GeoMagneticElements->H, Errors);
 }

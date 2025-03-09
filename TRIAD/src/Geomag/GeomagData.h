@@ -18,7 +18,7 @@ typedef struct wmm_test_element_s
     double x, y, z;
 } wmm_test_element_t;
 
-const wmm_element_t geomag_wmm_elements[] =
+static const wmm_element_t geomag_wmm_elements[] =
 {
     { -29351.8, 0.0, 12.0, 0.0, },
     { -1410.8, 4545.4, 9.7, -21.5, },
@@ -112,7 +112,7 @@ const wmm_element_t geomag_wmm_elements[] =
     { -0.7, 0.2, -0.1, -0.1, },
 };
 
-const wmm_test_element_t geomag_wmm_test_elements[] =
+static const wmm_test_element_t geomag_wmm_test_elements[] =
 {
     { 2025.000000, 28, 89, -121, -255.388723, -1482.460628, 56194.288771, },
     { 2025.000000, 48, 80, -96, 1875.982280, -1079.269389, 55623.044051, },
