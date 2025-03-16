@@ -264,34 +264,12 @@ int MAG_Geomag(MAGtype_Ellipsoid Ellip,
 
 void MAG_Error(int control);
 
-/*Memory and File Processing*/
-
-MAGtype_LegendreFunction *MAG_AllocateLegendreFunctionMemory(int NumTerms);
-
-MAGtype_MagneticModel *MAG_AllocateModelMemory(int NumTerms);
-
-MAGtype_SphericalHarmonicVariables *MAG_AllocateSphVarMemory(int nMax);
-
-void MAG_AssignHeaderValues(MAGtype_MagneticModel *model, char values[][MAXLINELENGTH]);
-
-void MAG_AssignMagneticModelCoeffs(MAGtype_MagneticModel *Assignee, MAGtype_MagneticModel *Source, int nMax, int nMaxSecVar);
-
-int MAG_readMagneticModel(char *filename, MAGtype_MagneticModel *MagneticModel);
-
-int MAG_readMagneticModel_Large(char *filename, char *filenameSV, MAGtype_MagneticModel *MagneticModel);
-
-char *MAG_Trim(char *str);
-
 /*Conversions, Transformations, and other Calculations*/
 int MAG_CalculateGeoMagneticElements(MAGtype_MagneticResults *MagneticResultsGeo, MAGtype_GeoMagneticElements *GeoMagneticElements);
 
 int MAG_CalculateSecularVariationElements(MAGtype_MagneticResults MagneticVariation, MAGtype_GeoMagneticElements *MagneticElements);
 
 int MAG_CalculateGridVariation(MAGtype_CoordGeodetic location, MAGtype_GeoMagneticElements *elements);
-
-void MAG_DegreeToDMSstring(float DegreesOfArc, int UnitDepth, char *DMSstring);
-
-void MAG_DMSstringToDegree(char *DMSstring, float *DegreesOfArc);
 
 int MAG_GeodeticToSpherical(MAGtype_Ellipsoid Ellip, MAGtype_CoordGeodetic CoordGeodetic, MAGtype_CoordSpherical *CoordSpherical);
 
@@ -351,42 +329,10 @@ int MAG_SummationSpecial(MAGtype_MagneticModel *MagneticModel,
 
 int MAG_TimelyModifyMagneticModel(MAGtype_Date UserDate, MAGtype_MagneticModel *MagneticModel, MAGtype_MagneticModel *TimedMagneticModel);
 
-/*Geoid*/
-
-
-int MAG_ConvertGeoidToEllipsoidHeight(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Geoid *Geoid);
-/*
- * The function Convert_Geoid_To_Ellipsoid_Height converts the specified WGS84
- * geoid height at the specified geodetic coordinates to the equivalent
- * ellipsoid height, using the EGM96 gravity model.
- *
- *    Latitude            : Geodetic latitude in radians           (input)
- *    Longitude           : Geodetic longitude in radians          (input)
- *    Geoid_Height        : Geoid height, in meters                (input)
- *    Ellipsoid_Height    : Ellipsoid height, in meters.           (output)
- *
- */
-
-int MAG_GetGeoidHeight(float Latitude, float Longitude, float *DeltaHeight, MAGtype_Geoid *Geoid);
-/*
- * The private function Get_Geoid_Height returns the height of the
- * WGS84 geiod above or below the WGS84 ellipsoid,
- * at the specified geodetic coordinates,
- * using a grid of height adjustments from the EGM96 gravity model.
- *
- *    Latitude            : Geodetic latitude in radians           (input)
- *    Longitude           : Geodetic longitude in radians          (input)
- *    DeltaHeight         : Height Adjustment, in meters.          (output)
- *
- */
-
-void MAG_EquivalentLatLon(float lat, float lon, float *repairedLat, float  *repairedLon);
-
 void MAG_WMMErrorCalc(float H, MAGtype_GeoMagneticElements *Uncertainty);
 
-// Yale addition
-int ingestPoint(float lat, float lon, float alt, float year, MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate);
-int calculateMagneticField(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate, MAGtype_GeoMagneticElements *GeoMagneticElements, MAGtype_GeoMagneticElements *Errors);
+// Yale additions
+int MAG_CalculateMag(MAGtype_CoordGeodetic *CoordGeodetic, MAGtype_Date *MagneticDate, MAGtype_GeoMagneticElements *GeoMagneticElements, MAGtype_GeoMagneticElements *Errors);
 int MAG_SetElipseDefaults(MAGtype_Ellipsoid *Ellip);
 
 #endif

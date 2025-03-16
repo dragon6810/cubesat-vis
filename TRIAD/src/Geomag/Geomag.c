@@ -250,7 +250,7 @@ FRESULT Geomag_GetMagEquatorial(time_t* t, const Vec3D_t* SatECI, Vec3D_t* MagEq
     Geomag_ECEFToGeodetic(&Ellip, SatECEF.X, SatECEF.Y, SatECEF.Z, &CoordGeodetic);
 
     date.DecimalYear = Geomag_TimeToYear(t);
-    calculateMagneticField(&CoordGeodetic, &date, &GeomagElements, &GeomagErrors);
+    MAG_CalculateMag(&CoordGeodetic, &date, &GeomagElements, &GeomagErrors);
 
     MagNED.X = GeomagElements.X;
     MagNED.Y = GeomagElements.Y;
