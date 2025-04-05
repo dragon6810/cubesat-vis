@@ -680,6 +680,7 @@ void render(void)
     vec3_t lnstart, lnend;
     vec3_t magv, sunv, satmagv, satsunv;
     vec3_t campos;
+    vec3_t dim;
     float satrotvelq[4];
     arm_matrix_instance_f32 satrotvelm;
     arm_matrix_instance_f32 satrotm;
@@ -723,12 +724,6 @@ void render(void)
     col[2] = 1.0;
     drawball(vec3_origin, 6371, col);
 
-    // Sat
-    col[0] = 0.9;
-    col[1] = 0.3;
-    col[2] = 0.4;
-    drawball(satpos, 256, col);
-
     arm_mat_init_f32(&satrotvelm, 3, 3, satrotvelmdata);
     arm_mat_init_f32(&satrotm, 3, 3, satrotmdata);
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -752,6 +747,17 @@ void render(void)
 
     memcpy(satlasttriadmat.pData, sattriadmat.pData, 3 * 3 * sizeof(float));
     TRIAD_Compute(magv, sunv, satmagv, satsunv, &sattriadmat);
+
+    // Sat
+    col[0] = 0.9;
+    col[1] = 0.3;
+    col[2] = 0.4;
+    dim[0] = 500;
+    dim[1] = 500;
+    dim[2] = 1000;
+
+    drawbox(satpos, dim, sattriadmat, col);
+    //drawball(satpos, 256, col);
 
     // Sat Basis Vectors
     for(i=0; i<3; i++)
@@ -870,9 +876,6 @@ void render(void)
     VectorCopy(lnend, vec3_origin);
     lnend[1] = 12000;
     drawline(lnstart, lnend, col);
-
-    lnend[0] = lnend[1] = lnend[2] = 10000;
-    drawbox(vec3_origin, lnend, sattriadmat, col);
 
     drawmagfield();
 
