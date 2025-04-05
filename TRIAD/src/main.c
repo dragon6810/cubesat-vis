@@ -673,6 +673,7 @@ void render(void)
         VectorAdd(lnend, satpos, lnend);
         drawarrow(lnstart, lnend, col);
 
+#ifdef ZFIGHTYES
         col[0] = col[1] = col[2] = 0.5;
         col[i] = 1.0;
         VectorCopy(lnstart, vec3_origin);
@@ -682,10 +683,12 @@ void render(void)
         VectorAdd(lnstart, satpos, lnstart);
         VectorAdd(lnend, satpos, lnend);
         drawarrow(lnstart, lnend, col);
+#endif
     }
 
     TRIAD_CalculateOmega(&satlasttriadmat, &sattriadmat, seconds - lasttriadtime, computedomega);
 
+#ifdef ZFIGHTYES
     // Sat Omega Vector
     col[0] = 0.6;
     col[1] = 0.5;
@@ -694,6 +697,7 @@ void render(void)
     VectorCopy(lnstart, satpos);
     VectorAdd(lnend, satomega, lnstart);
     drawarrow(lnstart, lnend, col);
+#endif
 
     // Computed Omega Vector
     col[0] = 0.3;
