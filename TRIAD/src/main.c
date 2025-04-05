@@ -361,6 +361,99 @@ void drawarrow(vec3_t start, vec3_t end, vec3_t col)
     drawcone(end, dir, col);
 }
 
+void drawbox(vec3_t pos, vec3_t dimensions, arm_matrix_instance_f32 rot, vec3_t col)
+{
+    int i, j;
+
+    vec3_t v[4];
+    vec3_t basis[3];
+    vec3_t normal, curcol;
+    vec3_t lightdir = {0, 0, 1};
+    float mul;
+
+    glBegin(GL_QUADS);
+
+    for(i=0; i<6; i++)
+    {
+        for(j=0; j<3; j++)
+            VectorCopy(basis[j], vec3_origin);
+
+        switch(i)
+        {
+        case 0: // -X
+            basis[0][1] = -dimensions[1] / 2;
+            basis[1][2] =  dimensions[2] / 2;
+            basis[2][0] = -dimensions[0] / 2;
+            break;
+        case 1: // +X
+            basis[0][1] =  dimensions[1] / 2;
+            basis[1][2] =  dimensions[2] / 2;
+            basis[2][0] =  dimensions[0] / 2;
+            break;
+        case 2: // -Y
+            basis[0][0] =  dimensions[0] / 2;
+            basis[1][2] =  dimensions[2] / 2;
+            basis[2][1] = -dimensions[1] / 2;
+            break;
+        case 3: // +Y
+            basis[0][0] = -dimensions[0] / 2;
+            basis[1][2] =  dimensions[2] / 2;
+            basis[2][1] =  dimensions[1] / 2;
+            break;
+        case 4: // -Z
+            basis[0][0] =  dimensions[0] / 2;
+            basis[1][1] = -dimensions[1] / 2;
+            basis[2][2] = -dimensions[2] / 2;
+            break;
+        case 5: // +Z
+            basis[0][0] =  dimensions[0] / 2;
+            basis[1][1] =  dimensions[1] / 2;
+            basis[2][2] =  dimensions[2] / 2;
+            break;
+        };
+
+        for(j=0; j<3; j++)
+            arm_mat_vec_mult_f32(&rot, basis[j], basis[j]);
+        
+        for(j=0; j<4; j++)
+            VectorCopy(v[j], pos);
+
+        // -x-y+z
+        VectorSubtract(v[0], v[0], basis[0]);
+        VectorSubtract(v[0], v[0], basis[1]);
+        VectorAdd     (v[0], v[0], basis[2]);
+        // +x-y+z
+        VectorAdd     (v[1], v[1], basis[0]);
+        VectorSubtract(v[1], v[1], basis[1]);
+        VectorAdd     (v[1], v[1], basis[2]);
+        // +x+y+z
+        VectorAdd     (v[2], v[2], basis[0]);
+        VectorAdd     (v[2], v[2], basis[1]);
+        VectorAdd     (v[2], v[2], basis[2]);
+        // -x+y+z
+        VectorSubtract(v[3], v[3], basis[0]);
+        VectorAdd     (v[3], v[3], basis[1]);
+        VectorAdd     (v[3], v[3], basis[2]);
+
+        VectorNormalize(normal, basis[2]);
+        mul = VectorDot(normal, lightdir) + 0.25;
+        if(mul < 0)
+            mul = 0;
+        mul = mul + 0.5;
+        if(mul > 1)
+            mul = 1;
+        VectorScale(curcol, col, mul);
+        glColor3f(curcol[0], curcol[1], curcol[2]);
+
+        for(j=0; j<4; j++)
+            glVertex3f(v[j][0], v[j][1], v[j][2]);
+    }
+
+    glColor3f(1, 1, 1);
+
+    glEnd();
+}
+
 void drawball(vec3_t pos, float r, vec3_t col)
 {
     const int usegs = 32;
@@ -777,6 +870,9 @@ void render(void)
     VectorCopy(lnend, vec3_origin);
     lnend[1] = 12000;
     drawline(lnstart, lnend, col);
+
+    lnend[0] = lnend[1] = lnend[2] = 10000;
+    drawbox(vec3_origin, lnend, sattriadmat, col);
 
     drawmagfield();
 
