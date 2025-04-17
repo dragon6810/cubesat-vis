@@ -882,12 +882,23 @@ void render(void)
     if (nk_begin(nukcontext, "mag vis", nk_rect(32, 32, 280, 300),
                      NK_WINDOW_BORDER)) 
     {
+        char rows[3][256];
         nk_layout_row_static(nukcontext, 30, 256, 1);
         
         nk_label(nukcontext, "magnetic field altitude in km:", NK_TEXT_LEFT);
         nk_slider_float(nukcontext, 0, &sampleelevation, 8192, 16);
 
         nk_checkbox_label(nukcontext, "draw magnetic field", &dontdrawmag);
+
+        // TODO: Do this in a less sketchy way
+        sprintf(rows[0], "[ % 1.3f % 1.3f % 1.3f ]", sattriadmat.pData[0], sattriadmat.pData[1], sattriadmat.pData[2]);
+        sprintf(rows[1], "[ % 1.3f % 1.3f % 1.3f ]", sattriadmat.pData[3], sattriadmat.pData[4], sattriadmat.pData[5]);
+        sprintf(rows[2], "[ % 1.3f % 1.3f % 1.3f ]", sattriadmat.pData[6], sattriadmat.pData[7], sattriadmat.pData[8]);
+
+        nk_label(nukcontext, "attitude matrix:", NK_TEXT_LEFT);
+        nk_label(nukcontext, rows[0], NK_TEXT_LEFT);
+        nk_label(nukcontext, rows[1], NK_TEXT_LEFT);
+        nk_label(nukcontext, rows[2], NK_TEXT_LEFT);
 
         mouseoverui = nk_window_is_hovered(nukcontext) || nk_item_is_any_active(nukcontext);
     }
